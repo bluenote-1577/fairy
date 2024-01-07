@@ -396,11 +396,13 @@ pub fn sketch_genome_individual(
                 let seq = record.seq();
 
                 extract_markers_positions(&seq, &mut kmer_vec, c, k, 0);
+                //fmh_seeds_positions(&seq, &mut kmer_vec, c, k, 0);
 
                 let mut kmer_set = MMHashSet::default();
                 let mut duplicate_set = MMHashSet::default();
                 let mut new_vec = Vec::with_capacity(kmer_vec.len());
                 kmer_vec.sort();
+
                 for (_, _pos, km) in kmer_vec.iter() {
                     if !kmer_set.contains(&km) {
                         kmer_set.insert(km);
@@ -408,9 +410,10 @@ pub fn sketch_genome_individual(
                         duplicate_set.insert(km);
                     }
                 }
+
                 let mut last_pos = 0;
                 for (_, pos, km) in kmer_vec.iter() {
-                    if !duplicate_set.contains(&km) {
+                    if !duplicate_set.contains(&km) || true{
                         if last_pos == 0 || pos - last_pos > min_spacing {
                             new_vec.push(*km);
                             last_pos = *pos;

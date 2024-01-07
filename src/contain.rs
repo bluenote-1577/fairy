@@ -27,10 +27,14 @@ fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSke
         readset.insert(res.seq_name.to_string());
         inner.insert(&res.seq_name, (res.final_est_cov, res.var));
     }
+    //debug!("number of contigs processed {}", ani_results.len());
+    //dbg!(&matrix);
 
     let mut contig_list_sorted = genome_sketches.iter().map(|x| x.first_contig_name.as_str()).collect::<Vec<&str>>();
+    //dbg!(&contig_list_sorted[0..10]);
     let contig_to_size = genome_sketches.iter().map(|x| (x.first_contig_name.as_str(), x.gn_size)).collect::<FxHashMap<&str, usize>>();
     let mut read_list_sorted = readset.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
+
     sort(&mut contig_list_sorted);
     sort(&mut read_list_sorted);
 
@@ -43,23 +47,22 @@ fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSke
         write!(writer, "{}", contig.split(' ').collect::<Vec<&str>>()[0]).unwrap();
         write!(writer, "\t{}", contig_to_size[contig]).unwrap();
         let mut avg_cov = 0.;
-        if matrix.contains_key(&contig){
+        if matrix.contains_key(contig){
             for value in matrix[contig].values(){
                 avg_cov += value.0;
             }
             avg_cov /= matrix[contig].values().len() as f64;
         }
         else{
-            panic!("Something went wrong with contig processing");
         }
         write!(writer, "\t{}", avg_cov).unwrap();
         for read in read_list_sorted.iter(){
-            if matrix[contig].contains_key(read){
+            if matrix.contains_key(contig) && matrix[contig].contains_key(read){
                 let (cov, var) = matrix[&contig][read];
                 write!(writer, "\t{}\t{}", cov, var).unwrap();
             }
             else{
-                write!(writer, "\t0").unwrap();
+                write!(writer, "\t0\t0").unwrap();
             }
         }
         write!(writer, "\n").unwrap();
@@ -298,8 +301,15 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
         let stats_vec_seq_all: Mutex<Vec<AniResult>> = Mutex::new(vec![]);
         chunks.into_iter().for_each(|chunk| {
             chunk.into_par_iter().for_each(|j|{
+                
+                let is_sketch;
+                if read_files[j].ends_with(SAMPLE_FILE_SUFFIX){
+                    is_sketch = true;
+                }
+                else{
+                    is_sketch = false;
+                }
                 let stats_vec_seq = Mutex::new(vec![]);
-                let is_sketch = j >= read_files.len() - read_sketch_files.len();
                 let c;
                 let k;
                 if genome_sketches.is_empty(){
@@ -753,7 +763,7 @@ fn get_stats<'a>(
         }
     }
 
-    log::trace!("COV VECTOR for {}/{}: {:?}, MAX_COV_THRESHOLD: {}", sequence_sketch.file_name, genome_sketch.file_name ,covs, max_cov);
+    log::trace!("COV VECTOR for {}/{}: {:?}, MAX_COV_THRESHOLD: {}", sequence_sketch.file_name, genome_sketch.first_contig_name, covs, max_cov);
 
     let mut full_covs = vec![0; gn_kmers.len() - contain_count];
     for cov in covs.iter() {
@@ -981,17 +991,17 @@ fn var(data: &[u32]) -> Option<f32> {
     }
     let data_t;
     if data.len() > VAR_CUTOFF{
-        data_t = &data[..data.len() * 9 / 10];
+        data_t = &data[0..data.len() * 95 / 100];
     }
     else{
         data_t = &data;
     }
-    let mean = mean(data).unwrap();
+    let mean = mean(data_t).unwrap();
     let mut var = 0.;
     for x in data_t {
         var += (*x as f32 - mean) * (*x as f32 - mean)
     }
-    return Some(var / data.len() as f32);
+    return Some(var / data_t.len() as f32);
 }
 
 fn mean(data: &[u32]) -> Option<f32> {
