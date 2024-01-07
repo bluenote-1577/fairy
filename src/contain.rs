@@ -1,9 +1,11 @@
 use crate::cmdline::*;
+use human_sort::sort;
 use std::path::Path;
 use std::io::prelude::*;
 use std::io;
 use std::io::BufWriter;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use crate::constants::*;
 use crate::inference::*;
 use crate::sketch::*;
@@ -15,6 +17,55 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::Mutex;
+
+fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>) {
+
+    let mut matrix: FxHashMap<&str, FxHashMap<&str,(f64,f64)>> = FxHashMap::default();
+    let mut readset = FxHashSet::default();
+    for res in ani_results.iter(){
+        let inner = matrix.entry(res.contig_name).or_insert(FxHashMap::default());
+        readset.insert(res.seq_name.to_string());
+        inner.insert(&res.seq_name, (res.final_est_cov, res.var));
+    }
+
+    let mut contig_list_sorted = genome_sketches.iter().map(|x| x.first_contig_name.as_str()).collect::<Vec<&str>>();
+    let contig_to_size = genome_sketches.iter().map(|x| (x.first_contig_name.as_str(), x.gn_size)).collect::<FxHashMap<&str, usize>>();
+    let mut read_list_sorted = readset.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
+    sort(&mut contig_list_sorted);
+    sort(&mut read_list_sorted);
+
+    write!(writer, "contigName\tcontigLen\ttotalAvgDepth").unwrap();
+    for read_name in read_list_sorted.iter(){
+        write!(writer, "\t{}\t{}-var", read_name, read_name).unwrap();
+    }
+    write!(writer, "\n").unwrap();
+    for contig in contig_list_sorted{
+        write!(writer, "{}", contig.split(' ').collect::<Vec<&str>>()[0]).unwrap();
+        write!(writer, "\t{}", contig_to_size[contig]).unwrap();
+        let mut avg_cov = 0.;
+        if matrix.contains_key(&contig){
+            for value in matrix[contig].values(){
+                avg_cov += value.0;
+            }
+            avg_cov /= matrix[contig].values().len() as f64;
+        }
+        else{
+            panic!("Something went wrong with contig processing");
+        }
+        write!(writer, "\t{}", avg_cov).unwrap();
+        for read in read_list_sorted.iter(){
+            if matrix[contig].contains_key(read){
+                let (cov, var) = matrix[&contig][read];
+                write!(writer, "\t{}\t{}", cov, var).unwrap();
+            }
+            else{
+                write!(writer, "\t0").unwrap();
+            }
+        }
+        write!(writer, "\n").unwrap();
+    }
+
+}
 
 fn print_ani_result(ani_result: &AniResult, pseudotax: bool, writer: &mut Box<dyn Write + Send>) {
     let print_final_ani = format!("{:.2}", f64::min(ani_result.final_est_ani * 100., 100.));
@@ -138,7 +189,7 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
         .build_global()
         .unwrap();
 
-    let out_writer = match args.out_file_name {
+    let mut out_writer = match args.out_file_name {
         Some(ref x) => {
             let path = Path::new(&x);
             Box::new(BufWriter::new(File::create(&path).unwrap())) as Box<dyn Write + Send>
@@ -207,17 +258,11 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
         std::process::exit(1);
     }
 
-    let genome_sketches = get_genome_sketches(&args, &genome_sketch_files, &genome_files);
-    let genome_index_vec = (0..genome_sketches.len()).collect::<Vec<usize>>();
+    let genome_sketches_vec = get_genome_sketches(&args, &genome_sketch_files, &genome_files);
     log::info!("Finished obtaining genome sketches.");
 
-    if genome_sketches.is_empty() {
+    if genome_sketches_vec.is_empty() {
         log::error!("No genome sketches found; see sylph query/profile -h for help. Exiting");
-        std::process::exit(1);
-    }
-
-    if genome_sketches.first().unwrap().pseudotax_tracked_nonused_kmers.is_none() && args.pseudotax{
-        log::error!("Attempting profiling, but *.syldb was sketched with the --disable-profiling option. Exiting");
         std::process::exit(1);
     }
 
@@ -246,51 +291,60 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
     }
 
     read_files.extend(read_sketch_files.clone());
-    let first_write = Mutex::new(true);
     let sequence_index_vec = (0..read_files.len()).collect::<Vec<usize>>();
-    let out_writer:Mutex<Box<dyn Write + Send>> = Mutex::new(out_writer);
 
-    let chunks = get_chunks(&sequence_index_vec, step);
-
-    chunks.into_iter().for_each(|chunk| {
-        chunk.into_par_iter().for_each(|j|{
-            let is_sketch = j >= read_files.len() - read_sketch_files.len();
-            let sequence_sketch = get_seq_sketch(&args, read_files[j], is_sketch, genome_sketches[0].c, genome_sketches[0].k);
-            if sequence_sketch.is_some(){
-                let sequence_sketch = sequence_sketch.unwrap();
-                
-                let kmer_id_opt;
-                if args.seq_id.is_some(){
-                    kmer_id_opt = Some((args.seq_id.unwrap()/100.).powf(sequence_sketch.k as f64));
+    for genome_sketches in genome_sketches_vec {
+        let chunks = get_chunks(&sequence_index_vec, step);
+        let stats_vec_seq_all: Mutex<Vec<AniResult>> = Mutex::new(vec![]);
+        chunks.into_iter().for_each(|chunk| {
+            chunk.into_par_iter().for_each(|j|{
+                let stats_vec_seq = Mutex::new(vec![]);
+                let is_sketch = j >= read_files.len() - read_sketch_files.len();
+                let c;
+                let k;
+                if genome_sketches.is_empty(){
+                    c = 50;
+                    k = 31;
                 }
                 else{
-                    kmer_id_opt = get_kmer_identity(&sequence_sketch, args.estimate_unknown);
+                    c = genome_sketches[0].c;
+                    k = genome_sketches[0].k;
                 }
-                if args.estimate_unknown{
-                    log::debug!("{} has estimated kmer identity {:.3}.", &read_files[j], kmer_id_opt.unwrap());
-                    if kmer_id_opt.is_some() && kmer_id_opt.unwrap().powf(1./sequence_sketch.k as f64) > 0.98{
+                let sequence_sketch = get_seq_sketch(&args, read_files[j], is_sketch, c, k);
+                if sequence_sketch.is_some(){
+                    let sequence_sketch = sequence_sketch.unwrap();
+                    
+                    let kmer_id_opt;
+                    if args.seq_id.is_some(){
+                        kmer_id_opt = Some((args.seq_id.unwrap()/100.).powf(sequence_sketch.k as f64));
                     }
-                    else if args.seq_id.is_none(){
-                        log::warn!("{} has estimated identity {:.3} < 98%, indicating low-depth of coverage, highly diverse samples, or noisy reads. If using accurate reads (> 98% id), --estimate-unknown option is unreliable. Strongly consider using --read-seq-id.",  &read_files[j], kmer_id_opt.unwrap().powf(1./sequence_sketch.k as f64) * 100.);
+                    else{
+                        kmer_id_opt = get_kmer_identity(&sequence_sketch, args.estimate_unknown);
                     }
-                }
-                
-                let stats_vec_seq: Mutex<Vec<AniResult>> = Mutex::new(vec![]);
-                genome_index_vec.par_iter().for_each(|i| {
-                    let genome_sketch = &genome_sketches[*i];
-                    let res = get_stats(&args, &genome_sketch, &sequence_sketch, None);
-                    if res.is_some() {
-                        //res.as_mut().unwrap().genome_sketch_index = *i;
-                        stats_vec_seq.lock().unwrap().push(res.unwrap());
-                        
+                    if args.estimate_unknown{
+                        log::debug!("{} has estimated kmer identity {:.3}.", &read_files[j], kmer_id_opt.unwrap());
+                        if kmer_id_opt.is_some() && kmer_id_opt.unwrap().powf(1./sequence_sketch.k as f64) > 0.98{
+                        }
+                        else if args.seq_id.is_none(){
+                            log::warn!("{} has estimated identity {:.3} < 98%, indicating low-depth of coverage, highly diverse samples, or noisy reads. If using accurate reads (> 98% id), --estimate-unknown option is unreliable. Strongly consider using --read-seq-id.",  &read_files[j], kmer_id_opt.unwrap().powf(1./sequence_sketch.k as f64) * 100.);
+                        }
                     }
-                });
+                    
+                    let genome_index_vec = (0..genome_sketches.len()).into_iter().collect::<Vec<usize>>();
+                    genome_index_vec.par_iter().for_each(|i| {
+                        let genome_sketch = &genome_sketches[*i];
+                        let res = get_stats(&args, &genome_sketch, &sequence_sketch, None);
+                        if res.is_some() {
+                            //res.as_mut().unwrap().genome_sketch_index = *i;
+                            //stats_vec_seq.lock().unwrap().entry(res.unwrap().seq_name).or_insert(vec![]).push(res.unwrap());
+                            stats_vec_seq.lock().unwrap().push(res.unwrap());
+                        }
+                    });
 
-                let mut stats_vec_seq = stats_vec_seq.into_inner().unwrap();
-                estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, args.estimate_unknown, sequence_sketch.mean_read_length, sequence_sketch.k);
+                    let mut stats_vec_seq = stats_vec_seq.into_inner().unwrap();
+                    estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, args.estimate_unknown, sequence_sketch.mean_read_length, sequence_sketch.k);
 
-                if args.pseudotax{
-                    log::info!("{} taxonomic profiling; reassigning k-mers for {} genomes...", &read_files[j], stats_vec_seq.len());
+                    log::info!("{} reassigning k-mers for {} genomes...", &read_files[j], stats_vec_seq.len());
                     let winner_map = winner_table(&stats_vec_seq);
                     let remaining_genomes = stats_vec_seq.iter().map(|x| x.genome_sketch).collect::<Vec<&GenomeSketch>>();
                     let stats_vec_seq_2 = Mutex::new(vec![]);
@@ -300,49 +354,23 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                             stats_vec_seq_2.lock().unwrap().push(res.unwrap());
                         }
                     });
-                    stats_vec_seq = derep_if_reassign_threshold(&stats_vec_seq, stats_vec_seq_2.into_inner().unwrap(), args.redundant_ani, sequence_sketch.k);
+                    //stats_vec_seq = derep_if_reassign_threshold(&stats_vec_seq, stats_vec_seq_2.into_inner().unwrap(), args.redundant_ani, sequence_sketch.k);
                     //stats_vec_seq = stats_vec_seq_2.into_inner().unwrap();
                     estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, args.estimate_unknown, sequence_sketch.mean_read_length, sequence_sketch.k);
                     log::info!("{} has {} genomes passing profiling threshold. ", &read_files[j], stats_vec_seq.len());
 
-                    let mut bases_explained = 1.;
+                    let bases_explained;
                     if args.estimate_unknown{
                         bases_explained = estimate_covered_bases(&stats_vec_seq, &sequence_sketch, sequence_sketch.mean_read_length, sequence_sketch.k);
                         log::info!("{} has {:.2}% of reads detected in database by profile", &read_files[j], bases_explained * 100.);
                     }
-
-                    let total_cov = stats_vec_seq.iter().map(|x| x.final_est_cov).sum::<f64>();
-                    let total_seq_cov = stats_vec_seq.iter().map(|x| x.final_est_cov * x.genome_sketch.gn_size as f64).sum::<f64>();
-                    for thing in stats_vec_seq.iter_mut(){
-                        thing.rel_abund = Some(thing.final_est_cov/total_cov * 100.);
-                    }
-                    for thing in stats_vec_seq.iter_mut(){
-                        thing.seq_abund = Some(thing.final_est_cov * thing.genome_sketch.gn_size as f64 / total_seq_cov * 100. * bases_explained);
-                    }
+                    stats_vec_seq_all.lock().unwrap().extend(stats_vec_seq_2.into_inner().unwrap());
                 }
-
-                if args.pseudotax{
-                    stats_vec_seq.sort_by(|x,y| y.rel_abund.unwrap().partial_cmp(&x.rel_abund.unwrap()).unwrap());
-                }
-                else{
-                    stats_vec_seq.sort_by(|x,y| y.final_est_ani.partial_cmp(&x.final_est_ani).unwrap());
-                }
-
-                if *first_write.lock().unwrap(){
-                    if !stats_vec_seq.is_empty(){
-                        *first_write.lock().unwrap() = false;
-                        print_header(args.pseudotax,&mut *out_writer.lock().unwrap(), args.estimate_unknown);
-                    }
-
-                }
-                let mut out_writer = out_writer.lock().unwrap();
-                for res in stats_vec_seq{
-                    print_ani_result(&res, args.pseudotax, &mut *out_writer);
-                }
-            }
-            log::info!("Finished sample {}.", &read_files[j]);
+                log::info!("Finished sample {}.", &read_files[j]);
+            });
         });
-    });
+        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &genome_sketches,&mut out_writer);
+    }
 
     log::info!("sylph finished.");
 }
@@ -454,7 +482,7 @@ fn get_genome_sketches(
     args: &ContainArgs,
     genome_sketch_files: &Vec<&String>,
     genome_files: &Vec<&String>,
-) -> Vec<GenomeSketch> {
+) -> Vec<Vec<GenomeSketch>> {
     let mut lowest_genome_c = None;
     let mut current_k = None;
 
@@ -484,7 +512,7 @@ fn get_genome_sketches(
             error!("Query sketches have inconsistent -k. Exiting.");
             std::process::exit(1);
         }
-        genome_sketches.lock().unwrap().extend(genome_sketches_vec);
+        genome_sketches.lock().unwrap().push(genome_sketches_vec);
     }
 
     genome_files.into_par_iter().for_each(|genome_file|{
@@ -495,17 +523,8 @@ fn get_genome_sketches(
             error!("-k {} is not equal to -k {} found in sketches. Continuing without sketching.", args.k, current_k.unwrap());
         }
         else {
-            if args.individual{
             let indiv_gn_sketches = sketch_genome_individual(args.c, args.k, genome_file, args.min_spacing_kmer, args.pseudotax);
-                genome_sketches.lock().unwrap().extend(indiv_gn_sketches);
-
-            }
-            else{
-                let genome_sketch_opt = sketch_genome(args.c, args.k, &genome_file, args.min_spacing_kmer, args.pseudotax);
-                if genome_sketch_opt.is_some() {
-                    genome_sketches.lock().unwrap().push(genome_sketch_opt.unwrap());
-                }
-            }
+            genome_sketches.lock().unwrap().push(indiv_gn_sketches);
         }
     });
 
@@ -632,17 +651,8 @@ fn _get_sketches_rewrite(args: &ContainArgs) -> (Vec<SequencesSketch>, Vec<Genom
             error!("-k {} is not equal to -k {} found in sketches. Continuing without sketching.", args.k, current_k.unwrap());
         }
         else {
-            if args.individual{
             let indiv_gn_sketches = sketch_genome_individual(args.c, args.k, genome_file, args.min_spacing_kmer, args.pseudotax);
-                genome_sketches.lock().unwrap().extend(indiv_gn_sketches);
-
-            }
-            else{
-                let genome_sketch_opt = sketch_genome(args.c, args.k, &genome_file, args.min_spacing_kmer, args.pseudotax);
-                if genome_sketch_opt.is_some() {
-                    genome_sketches.lock().unwrap().push(genome_sketch_opt.unwrap());
-                }
-            }
+            genome_sketches.lock().unwrap().extend(indiv_gn_sketches);
         }
     });
 
@@ -742,8 +752,8 @@ fn get_stats<'a>(
             }
         }
     }
-    log::trace!("COV VECTOR for {}/{}: {:?}, MAX_COV_THRESHOLD: {}", sequence_sketch.file_name, genome_sketch.file_name ,covs, max_cov);
 
+    log::trace!("COV VECTOR for {}/{}: {:?}, MAX_COV_THRESHOLD: {}", sequence_sketch.file_name, genome_sketch.file_name ,covs, max_cov);
 
     let mut full_covs = vec![0; gn_kmers.len() - contain_count];
     for cov in covs.iter() {
@@ -751,9 +761,9 @@ fn get_stats<'a>(
             full_covs.push(*cov);
         }
     }
-    let var = var(&full_covs);
-    if var.is_some(){
-        log::trace!("VAR {} {}", var.unwrap(), genome_sketch.file_name);
+    let var_opt = var(&full_covs);
+    if var_opt.is_some(){
+        log::trace!("VAR {} {}", var_opt.unwrap(), genome_sketch.file_name);
     }
     let mean_cov = full_covs.iter().sum::<u32>() as f64 / full_covs.len() as f64;
     let geq1_mean_cov = full_covs.iter().sum::<u32>() as f64 / covs.len() as f64;
@@ -832,11 +842,19 @@ fn get_stats<'a>(
         seq_name = sequence_sketch.file_name.clone();
     }
 
+    let var;
+    if var_opt.is_some(){
+        var = var_opt.unwrap();
+    }
+    else
+    {
+        return None;
+    }
     let ani_result = AniResult {
         naive_ani,
         final_est_ani,
         final_est_cov,
-        seq_name: seq_name,
+        seq_name,
         gn_name: genome_sketch.file_name.as_str(),
         contig_name: genome_sketch.first_contig_name.as_str(),
         mean_cov: geq1_mean_cov,
@@ -845,10 +863,10 @@ fn get_stats<'a>(
         lambda: use_lambda,
         ani_ci: (low_ani, high_ani),
         lambda_ci: (low_lambda, high_lambda),
-        genome_sketch: genome_sketch,
+        genome_sketch,
         rel_abund: None,
         seq_abund: None,
-
+        var: var as f64,
     };
     //log::trace!("Other time {:?}", Instant::now() - start_t_initial);
 
@@ -961,9 +979,16 @@ fn var(data: &[u32]) -> Option<f32> {
     if data.is_empty() {
         return None;
     }
+    let data_t;
+    if data.len() > VAR_CUTOFF{
+        data_t = &data[..data.len() * 9 / 10];
+    }
+    else{
+        data_t = &data;
+    }
     let mean = mean(data).unwrap();
     let mut var = 0.;
-    for x in data {
+    for x in data_t {
         var += (*x as f32 - mean) * (*x as f32 - mean)
     }
     return Some(var / data.len() as f32);

@@ -1,5 +1,5 @@
 [package]
-name = "sylph"
+name = "sylph-bc"
 version = "0.5.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -25,6 +25,7 @@ regex = "1"
 fastrand = "2"
 memory-stats = "1"
 scalable_cuckoo_filter = "*"
+human-sort = "0"
 
 [target.'cfg(target_env = "musl")'.dependencies]
 tikv-jemallocator = "0"

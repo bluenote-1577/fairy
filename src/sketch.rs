@@ -21,7 +21,6 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::{prelude::*, BufReader};
 use std::path::Path;
-use std::sync::Mutex;
 type Marker = u32;
 
 pub fn check_vram_and_block(max_ram: usize, file: &str) {
@@ -140,13 +139,9 @@ fn check_args_valid(args: &SketchArgs) {
         .init()
         .unwrap();
 
-    if args.files.is_empty()
-        && args.list_sequence.is_none()
-        && args.first_pair.is_empty()
+    if args.first_pair.is_empty()
         && args.second_pair.is_empty()
-        && args.genomes.is_none()
         && args.reads.is_none()
-        && args.list_genomes.is_none()
         && args.list_reads.is_none()
         && args.list_first_pair.is_none()
         && args.list_second_pair.is_none()
@@ -161,43 +156,10 @@ fn check_args_valid(args: &SketchArgs) {
     }
 }
 
-fn parse_ambiguous_files(
+fn parse_reads(
     args: &SketchArgs,
     read_inputs: &mut Vec<String>,
-    genome_inputs: &mut Vec<String>,
 ) {
-    let mut all_files = vec![];
-    if args.list_sequence.is_some() {
-        let file_list = args.list_sequence.as_ref().unwrap();
-        parse_line_file(file_list, &mut all_files);
-    }
-
-    all_files.extend(args.files.clone());
-
-    for file in all_files {
-        if is_fastq(&file) {
-            read_inputs.push(file);
-        } else if is_fasta(&file) {
-            genome_inputs.push(file);
-        } else {
-            warn!(
-                "{} does not have a fasta/fastq/gzip type extension; skipping",
-                file
-            );
-        }
-    }
-}
-
-fn parse_reads_and_genomes(
-    args: &SketchArgs,
-    read_inputs: &mut Vec<String>,
-    genome_inputs: &mut Vec<String>,
-) {
-    if let Some(genomes_syl_in) = args.genomes.clone() {
-        for gn_file in genomes_syl_in {
-            genome_inputs.push(gn_file);
-        }
-    }
     if let Some(reads_syl_in) = args.reads.clone() {
         for rd_file in reads_syl_in {
             read_inputs.push(rd_file);
@@ -207,11 +169,6 @@ fn parse_reads_and_genomes(
     if args.list_reads.is_some() {
         let file_reads = args.list_reads.as_ref().unwrap();
         parse_line_file(file_reads, read_inputs);
-    }
-
-    if args.list_genomes.is_some() {
-        let file_genomes = args.list_genomes.as_ref().unwrap();
-        parse_line_file(file_genomes, genome_inputs);
     }
 }
 
@@ -275,13 +232,11 @@ fn parse_sample_names(args: &SketchArgs) -> Option<Vec<String>> {
 
 pub fn sketch(args: SketchArgs) {
     let mut read_inputs = vec![];
-    let mut genome_inputs = vec![];
     let mut first_pairs = vec![];
     let mut second_pairs = vec![];
 
     check_args_valid(&args);
-    parse_ambiguous_files(&args, &mut read_inputs, &mut genome_inputs);
-    parse_reads_and_genomes(&args, &mut read_inputs, &mut genome_inputs);
+    parse_reads(&args, &mut read_inputs);
     parse_paired_end_reads(&args, &mut first_pairs, &mut second_pairs);
 
     let sample_names = parse_sample_names(&args);
@@ -299,12 +254,6 @@ pub fn sketch(args: SketchArgs) {
             log::error!("Max ram must be >= 7. Exiting.");
             std::process::exit(1);
         }
-    }
-
-    if genome_inputs.is_empty() && args.db_out_name != "database" {
-        log::warn!(
-            "-o is set but no genomes are present. -o only applies to genomes; see -d for reads"
-        );
     }
 
     if !first_pairs.is_empty() && !second_pairs.is_empty() {
@@ -415,68 +364,6 @@ pub fn sketch(args: SketchArgs) {
             info!("Sketching {} complete.", file_path_str);
         }
     });
-
-    if !genome_inputs.is_empty() {
-        info!("Sketching genomes...");
-        let iter_vec: Vec<usize> = (0..genome_inputs.len()).into_iter().collect();
-        let counter: Mutex<usize> = Mutex::new(0);
-        let pref = Path::new(&args.db_out_name);
-        let file_path_str = format!("{}{}", pref.to_str().unwrap(), QUERY_FILE_SUFFIX);
-        let path = std::path::Path::new(&file_path_str);
-        let prefix = path.parent().unwrap();
-        std::fs::create_dir_all(prefix)
-            .expect("Could not create directory for output database file (-o). Exiting...");
-        let all_genome_sketches = Mutex::new(vec![]);
-
-        iter_vec.into_par_iter().for_each(|i| {
-            let genome_file = &genome_inputs[i];
-            if args.individual {
-                let indiv_gn_sketches = sketch_genome_individual(
-                    args.c,
-                    args.k,
-                    genome_file,
-                    args.min_spacing_kmer,
-                    !args.no_pseudotax,
-                );
-                all_genome_sketches
-                    .lock()
-                    .unwrap()
-                    .extend(indiv_gn_sketches);
-            } else {
-                let genome_sketch = sketch_genome(
-                    args.c,
-                    args.k,
-                    genome_file,
-                    args.min_spacing_kmer,
-                    !args.no_pseudotax,
-                );
-                if genome_sketch.is_some() {
-                    all_genome_sketches
-                        .lock()
-                        .unwrap()
-                        .push(genome_sketch.unwrap());
-                }
-            }
-            let mut c = counter.lock().unwrap();
-            *c += 1;
-            if *c % 100 == 0 && *c != 0 {
-                info!("{} genomes processed.", *c);
-            }
-        });
-
-        if all_genome_sketches.lock().unwrap().is_empty() {
-            warn!(
-                "No valid genomes to sketch; {} is not output",
-                file_path_str
-            );
-        } else {
-            let mut genome_sk_file = BufWriter::new(
-                File::create(&file_path_str).expect(&format!("{} not valid ", file_path_str)),
-            );
-            info!("Wrote all genome sketches to {}", file_path_str);
-            bincode::serialize_into(&mut genome_sk_file, &all_genome_sketches).unwrap();
-        }
-    }
 
     info!("Finished.");
 }
@@ -956,7 +843,7 @@ pub fn sketch_sequences_needle(
         c,
         k,
         paired: false,
-        sample_name: sample_name,
+        sample_name,
         mean_read_length,
     });
 }
