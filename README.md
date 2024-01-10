@@ -4,7 +4,7 @@
 
 ### Introduction
 
-After metagenomic assembly, optimal workflows require aligning reads for **all samples** against contigs to obtain coverages before using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
+After metagenomic assembly, optimal workflows require aligning reads for **all metagenomic read samples** against contigs to obtain coverages before using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with BWA (but still approximate). 
 
