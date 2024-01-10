@@ -11,12 +11,12 @@ After metagenomic assembly, optimal workflows require aligning reads for **all m
 ### Results
 
 #### Short-reads 
-Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
+Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. For single-sample binning, fairy may be slightly worse than BWA, but it is still usable.  
 
 #### Long-reads
 **Non-HiFi:** For simplex nanopore reads and not-strain-resolved assemblies, fairy seems to be comparable with minimap2. 
 
-**HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 fo strain-resolved assemblies when using >99.9% identity reads. I do not recommend using fairy. 
+**HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). I do not recommend using fairy. 
 
 ##  Install (current version v0.5.1)
 
