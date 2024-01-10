@@ -2,14 +2,14 @@
 
 **Fairy** is a program that can get _approximate_ coverages for metagenomic reads against assembled contigs. Fairy is a derivative of the profiler [sylph](https://github.com/bluenote-1577/sylph) but is modified specifically for **metagenomic binning purposes**.
 
-Preliminary binning results show that using fairy instead of BWA for *multi-sample* binning recovers a similar amount of high-quality bins. However, **sylph is 10-1000x faster than BWA for all-to-all coverage calculation**. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
-
-
 ### Introduction
 
 After metagenomic assembly, optimal workflows require aligning reads for **all samples** against contigs to obtain coverages before using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 
-**Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with BWA (but still approximate).
+**Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with BWA (but still approximate). 
+
+Preliminary binning results show that using fairy instead of BWA for *multi-sample* binning recovers a similar amount of high-quality bins. However, **sylph is 10-1000x faster than BWA for all-to-all coverage calculation**. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
+
 
 ##  Install (current version v0.5.1)
 
