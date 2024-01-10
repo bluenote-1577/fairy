@@ -8,7 +8,7 @@ After metagenomic assembly, optimal workflows require aligning reads for **all m
 
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). 
 
-Preliminary binning results show that using fairy instead of BWA for *multi-sample* binning recovers a similar amount of high-quality bins. However, **sylph is 10-1000x faster than BWA for all-to-all coverage calculation**. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
+Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. However, **sylph is 10-1000x faster than BWA for all-to-all coverage calculation**. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
 
 
 ##  Install (current version v0.5.1)
