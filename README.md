@@ -6,10 +6,17 @@
 
 After metagenomic assembly, optimal workflows require aligning reads for **all metagenomic read samples** against contigs to obtain coverages before using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 
-**Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). 
+**Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
-Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. However, **sylph is 10-1000x faster than BWA for all-to-all coverage calculation**. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
+### Results
 
+#### Short-reads 
+Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. For single-sample binning, fairy may be slightly worse than BWA, but is still usable.  
+
+#### Long-reads
+**Non-HiFi:** For simplex nanopore reads and not-strain-resolved assemblies, fairy seems to be comparable with minimap2. 
+
+**HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 fo strain-resolved assemblies when using >99.9% identity reads. I do not recommend using fairy. 
 
 ##  Install (current version v0.5.1)
 
