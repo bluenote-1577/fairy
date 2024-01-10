@@ -23,4 +23,4 @@ jobs:
           prerelease: false
           automatic_release_tag: "latest"
           files: |
-            target/x86_64-unknown-linux-musl/release/sylph
+            target/x86_64-unknown-linux-musl/release/fairy
