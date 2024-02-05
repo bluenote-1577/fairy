@@ -69,7 +69,18 @@ fairy coverage sketch_dir/*.bcsp contigs.fa -t 10 -o coverage.tsv
 
 ## Output
 
-The output is compatible with the `jgi_summarize_bam_contig_depths` script from metabat2. TODO
+The output is compatible with the `jgi_summarize_bam_contig_depths` script from metabat2 (the column names are different, however). 
+
+```sh
+contigName  contigLen  totalAvgDepth  reads1.fq  reads1.fq-var  reads2.fq  reads2.fq-var  ...
+contig_1    38370      1.4            1.4        1.1100          0       0
+...
+```
+
+1. First three columns give the name, the length, and average coverage.
+2. The next columns are `mean coverage` and `coverage variance` for each sample.
+
+`--concoct-format` is also available if you don't need the variances.
 
 ## Citing sylph
 
