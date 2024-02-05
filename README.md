@@ -1,58 +1,28 @@
-# sylph - fast and precise species-level metagenomic profiling with ANIs 
-#
+# fairy - fast approximate metagenomic contig coverage calculation for binning
 
-## Introduction
+**Fairy** is a program that can get _approximate_ coverages for metagenomic reads against assembled contigs. Fairy is a derivative of the profiler [sylph](https://github.com/bluenote-1577/sylph) but is modified specifically for **metagenomic binning purposes**.
 
-**sylph** is a program that can perform ultrafast (1) **ANI querying** or (2) **metagenomic profiling** for metagenomic shotgun samples. 
+### Introduction
 
-**Containment ANI querying**: sylph can search a genome, e.g. E. coli, against your sample. If sylph gives an estimate of 97% ANI, then a genome is contained in your sample with 97% ANI to the queried E. coli genome. 
+After metagenomic assembly, optimal workflows require aligning reads for **all metagenomic read samples** against contigs to obtain coverages before using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 
-**Metagenomic profiling**: Like e.g. Kraken or MetaPhlAn, sylph can determine what species are in your sample and their abundances, as well as their _containment ANI in your metagenome_.
+**Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
-<p align="center"><img src="assets/sylph.gif?raw=true"/></p>
-<p align="center">
-   <i>
-   Profiling 1 Gbp of mouse gut reads against 85,205 genomes in a few seconds 
-   </i>
-</p>
+### Results
 
-### Why sylph?
+#### Short-reads 
+Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. Use an aligner for single-sample binning instead of fairy.
 
-1. **Accurate (containment) ANIs down to 0.1x effective coverage**: for bacterial ANI queries of > 90% ANI, sylph can often give accurate ANI estimates down to 0.1x coverage.
+#### Long-reads
+**Non-HiFi:** For simplex nanopore reads and not-strain-resolved assemblies, fairy seems to be comparable with minimap2. 
 
-2. **Precise species-level profiling**: Our tests show that sylph is more precise than Kraken and about as precise and sensitive as marker gene methods (MetaPhlAn, mOTUs). 
-
-3. **Ultrafast, multithreaded, multi-sample**: sylph can be > 100x faster than MetaPhlAn for multi-sample processing. sylph only takes 13GB of RAM for profiling against the entire GTDB-R214 database (85k genomes).
-
-4. **Easily customized databases**: sylph does not require taxonomic information, so you can profile against [metagenome-assembled genomes (MAGs), viruses, eukaryotes](https://github.com/bluenote-1577/sylph/wiki/Pre%E2%80%90built-databases), even assembled contigs, etc. Taxonomic information can be incorporated downstream for traditional profiling reports. 
-
-### How does sylph work?
-
-sylph uses a k-mer containment method, similar to sourmash or Mash. sylph's novelty lies in **using a statistical technique to correct ANI for low coverage genomes** within the sample, allowing accurate ANI queries for even low abundance genomes. See [here for more information on what sylph can and can not do](https://github.com/bluenote-1577/sylph/wiki/Introduction:-what-is-sylph-and-how-does-it-work%3F). 
-
-## Changelog
-
-### Version v0.5.0 and v0.5.1 - Dec 27, 2023. Major breaking updates.
-
-#### IMPORTANT
-
-* Big sensitivity boost for real Illumina profiling in v0.5 versus v0.4.
-* Breaking change: *.sylsp files are now in a new format. Old sketches will no longer work.
-* Shorter reads (>= 32bp) now usable
-* New probabilistic data structures for read deduplication -- lower memory usage 
-
-See the [CHANGELOG](https://github.com/bluenote-1577/sylph/blob/main/CHANGELOG.md) for complete details.
-
+**HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). I do not recommend using fairy. 
 
 ##  Install (current version v0.5.1)
 
 #### Option 1: conda install 
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/sylph/badges/version.svg)](https://anaconda.org/bioconda/sylph)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/sylph/badges/latest_release_date.svg)](https://anaconda.org/bioconda/sylph)
 
-```sh
-conda install -c bioconda sylph
-```
+FORTHCOMING
 
 #### Option 2: Build from source
 
@@ -65,21 +35,21 @@ Requirements:
 Building takes a few minutes (depending on # of cores).
 
 ```sh
-git clone https://github.com/bluenote-1577/sylph
-cd sylph
+git clone https://github.com/bluenote-1577/fairy
+cd fairy
 
 # If default rust install directory is ~/.cargo
-cargo install --path . --root ~/.cargo
-sylph query test_files/*
+cargo install --path . 
+fairy coverage test_files/*
 ```
 #### Option 3: Pre-built x86-64 linux statically compiled executable
 
 If you're on an x86-64 system, you can download the binary and use it without any installation. 
 
 ```sh
-wget https://github.com/bluenote-1577/sylph/releases/download/latest/sylph
-chmod +x sylph
-./sylph -h
+wget https://github.com/bluenote-1577/fairy/releases/download/latest/fairy
+chmod +x fairy
+./fairy -h
 ```
 
 Note: the binary is compiled with a different set of libraries (musl instead of glibc), probably impacting performance. 
@@ -87,43 +57,20 @@ Note: the binary is compiled with a different set of libraries (musl instead of 
 ## Quick start
 
 ```sh
-# all fasta -> one *.syldb; fasta are assumed to be genomes
-sylph sketch genome1.fa genome2.fa -o database
-#EQUIVALENT: sylph sketch -g genome1.fa genome2.fa -o database
+# sketch/index short reads
+fairy sketch -1 *_1.fastq.gz -2 *_2.fastq.gz -d sketch_dir
 
-# multi-sample sketching of paired reads
-sylph sketch -1 A_1.fq B_1.fq -2 A_2.fq B_2.fq -d read_sketch_folder
+# sketch/index long reads
+fairy sketch -r long_reads.fq -d sketch_dir
 
-# multi-sample sketching for single end reads, fastq are assumed to be reads
-sylph sketch reads.fq 
-#EQUIVALENT: sylph sketch -r reads.fq
-
-# ANI querying 
-sylph query database.syldb read_sketch_folder/*.sylsp -t (threads) > ani_queries.tsv
-
-# taxonomic profiling 
-sylph profile database.syldb read_sketch_folder/*.sylsp -t (threads) > profiling.tsv
+# calculate coverage
+fairy coverage sketch_dir/*.bcsp contigs.fa -t 10 -o coverage.tsv
 ```
 
-## [Pre-built databases](https://github.com/bluenote-1577/sylph/wiki/Pre%E2%80%90built-databases)
+## Output
 
-The pre-built databases [available here](https://github.com/bluenote-1577/sylph/wiki/Pre%E2%80%90built-databases) can be downloaded and used with sylph for profiling and containment querying. 
-
-## Tutorials and manuals
-
-### [Cookbook](https://github.com/bluenote-1577/sylph/wiki/sylph-cookbook)
-
-For common use cases and fast explanations, see the above [cookbook](https://github.com/bluenote-1577/sylph/wiki/sylph-cookbook).
-
-### Tutorials
-1. #### [Introduction: 5-minute sylph tutorial outlining basic usage](https://github.com/bluenote-1577/sylph/wiki/5%E2%80%90minute-sylph-tutorial)
-2. #### [Taxonomic profiling against GTDB-R214 database with MetaPhlAn output format](https://github.com/bluenote-1577/sylph/wiki/Taxonomic-profiling-with-the-GTDB%E2%80%90R214-database)
-
-### Manuals
-1. #### [Sylph's TSV output and containment ANI explanation](https://github.com/bluenote-1577/sylph/wiki/Output-format)
-2. #### [Incoporating custom taxonomies to get CAMI-like or MetaPhlAn-like outputs](https://github.com/bluenote-1577/sylph/wiki/Integrating-taxonomic-information-with-sylph)
+The output is compatible with the `jgi_summarize_bam_contig_depths` script from metabat2. TODO
 
 ## Citing sylph
 
-Jim Shaw and Yun William Yu. Metagenome profiling and containment estimation through abundance-corrected k-mer sketching with sylph (2023). bioRxiv.
-
+TODO
