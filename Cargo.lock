@@ -329,6 +329,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "fairy"
+version = "0.5.1"
+dependencies = [
+ "assert_cmd",
+ "bincode",
+ "clap",
+ "fastrand",
+ "flate2",
+ "fxhash",
+ "human-sort",
+ "log",
+ "memory-stats",
+ "nalgebra",
+ "needletail",
+ "predicates 1.0.8",
+ "rand",
+ "rayon",
+ "regex",
+ "scalable_cuckoo_filter",
+ "serde",
+ "serial_test",
+ "simple_logger",
+ "smallvec",
+ "statrs",
+ "tikv-jemallocator",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1155,34 +1183,6 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
-name = "sylph-bc"
-version = "0.5.1"
-dependencies = [
- "assert_cmd",
- "bincode",
- "clap",
- "fastrand",
- "flate2",
- "fxhash",
- "human-sort",
- "log",
- "memory-stats",
- "nalgebra",
- "needletail",
- "predicates 1.0.8",
- "rand",
- "rayon",
- "regex",
- "scalable_cuckoo_filter",
- "serde",
- "serial_test",
- "simple_logger",
- "smallvec",
- "statrs",
- "tikv-jemallocator",
-]
 
 [[package]]
 name = "syn"

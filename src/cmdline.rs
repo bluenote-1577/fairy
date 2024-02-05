@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
-#[clap(author, version, about = "Species-level shotgun metagenomic coverage calculation for contigs.\n\n--- Preparing inputs by sketching (indexing)\n\n# index (sketch) contigs\nsylph sketch -t 5 contigs1.fa contigs2.fa -o contigs1+2\n\n## index paired-end reads\nsylph sketch -1 a_1.fq b_1.fq -2 b_2.fq b_2.fq -d paired_sketches\n\n## coverage matrix output\nsylph coverage sketches/*.sylsp contigs*.syldb -o coverage_matrix.tsv", arg_required_else_help = true, disable_help_subcommand = true)]
+#[clap(author, version, about = "Shotgun metagenomic coverage calculation for contigs.\n\n--- Preparing inputs by sketching (indexing)\n\n## index paired-end reads\nsylph sketch -1 a_1.fq b_1.fq -2 b_2.fq b_2.fq -d paired_sketches\n\n## coverage matrix output\nsylph coverage sketches/*.sylsp contigs1.fa contigs2.fa ... -o coverage_matrix.tsv", arg_required_else_help = true, disable_help_subcommand = true)]
 pub struct Cli {
     #[clap(subcommand,)]
     pub mode: Mode,
@@ -28,9 +28,9 @@ pub struct SketchArgs {
     pub list_first_pair: Option<String>,
     #[clap(long="l2", help_heading = "PAIRED-END INPUT", help = "Newline delimited file; inputs are second pair of PE reads")]
     pub list_second_pair: Option<String>,
-    #[clap(long="lS", help_heading = "INPUT", help = "Newline delimited file; read sketches are renamed to given sample names")]
+    #[clap(long="lS", help_heading = "OUTPUT", help = "Newline delimited file; read sketches are renamed to given sample names")]
     pub list_sample_names: Option<String>,
-    #[clap(short='S', long="sample-names", help_heading = "INPUT", help = "Read sketches are renamed to given sample names")]
+    #[clap(multiple=true, short='S', long="sample-names", help_heading = "OUTPUT", help = "Read sketches are renamed to given sample names as opposed to using the read file name")]
     pub sample_names: Option<Vec<String>>,
 
     #[clap(short, default_value_t = 31,help_heading = "ALGORITHM", help ="Value of k. Only k = 21, 31 are currently supported")]
@@ -46,12 +46,11 @@ pub struct SketchArgs {
     #[clap(long="debug", help = "Debug output")]
     pub debug: bool,
 
-
-    #[clap(long="no-dedup", help_heading = "ALGORITHM", help = "Disable read deduplication procedure. Reduces memory; not recommended for illumina data")]
+    #[clap(long="no-dedup",default_value_t = true, help_heading = "ALGORITHM", help = "Turn off deduplication procedure (not recommended for illumina)", hidden=true)]
     pub no_dedup: bool,
 //    #[clap(long="disable-profiling", help_heading = "ALGORITHM", help = "Disable sylph profile usage for databases; may decrease size and make sylph query slightly faster", hidden=true)]
 //    pub no_pseudotax: bool,
-    #[clap(long="fpr", default_value_t = 0.0001, help_heading = "ALGORITHM", help = "False positive rate for read deduplicate hashing; valid values in [0,1).")]
+    #[clap(long="fpr", default_value_t = 0.0001, help_heading = "ALGORITHM", help = "False positive rate for read deduplicate hashing; valid values in [0,1).", hidden = true)]
     pub fpr: f64,
     #[clap(short='1',long="first-pairs", multiple=true, help_heading = "PAIRED-END INPUT", help = "First pairs for paired end reads")]
     pub first_pair: Vec<String>,
@@ -67,26 +66,23 @@ pub struct ContainArgs {
     #[clap(short='l',long="list", help = "Newline delimited file of file inputs")]
     pub file_list: Option<String>,
 
-    #[clap(long,default_value_t = 3., help_heading = "ALGORITHM", help = "Minimum k-mer multiplicity needed for coverage correction. Higher values gives more precision but lower sensitivity")]
+    #[clap(long,hidden=true,default_value_t = 3., help_heading = "ALGORITHM", help = "Minimum k-mer multiplicity needed for coverage correction. Higher values gives more precision but lower sensitivity")]
     pub min_count_correct: f64,
-    #[clap(short='M',long,default_value_t = 10., help_heading = "ALGORITHM", help = "Exclude genomes with less than this number of sampled k-mers")]
+    #[clap(short='M',long,default_value_t = 8., help_heading = "ALGORITHM", help = "Exclude genomes with less than this number of sampled k-mers")]
     pub min_number_kmers: f64,
     #[clap(short, long="minimum-ani", help_heading = "ALGORITHM", help = "Minimum adjusted ANI to consider (0-100) for coverage calculation. Default is 95." )]
     pub minimum_ani: Option<f64>,
     #[clap(short, default_value_t = 3, help = "Number of threads")]
     pub threads: usize,
-    #[clap(short='s', long="sample-threads", help = "Number of samples to be processed concurrently. Default: (# of total threads / 3) + 1")]
+    #[clap(short='s', long="sample-threads", help = "Number of samples to be processed concurrently. Default: (# of total threads / 2) + 1")]
     pub sample_threads: Option<usize>,
     #[clap(long="trace", help = "Trace output (caution: very verbose)")]
     pub trace: bool,
     #[clap(long="debug", help = "Debug output")]
     pub debug: bool,
 
-    #[clap(short='u', long="estimate-unknown", help_heading = "ALGORITHM", help = "Estimates true coverage instead of effective coverage" )]
-    pub estimate_unknown: bool,
-
-    #[clap(short='I',long="read-seq-id", help_heading = "ALGORITHM", help = "Mean sequence identity of reads (0-100). Only used if --estimate-unknown is toggled. Consider this if automatic identity estimate fails" )]
-    pub seq_id: Option<f64>,
+    #[clap(short='I',long="read-seq-id", default_value_t=99.5, help_heading = "ALGORITHM", help = "Mean sequence identity of reads (0-100). Only needed if using moderate error reads (e.g. nanopore)")]
+    pub seq_id: f64,
 
     //#[clap(short='l', long="read-length", help_heading = "ALGORITHM", help = "Read length (single-end length for pairs). Only necessary for short-read coverages when using --estimate-unknown. Not needed for long-reads" )]
     //pub read_length: Option<usize>,
@@ -98,7 +94,7 @@ pub struct ContainArgs {
     pub c: usize,
     #[clap(short, default_value_t = 31, help_heading = "SKETCHING", help = "Value of k. Only k = 21, 31 are currently supported. Does nothing for pre-sketched files")]
     pub k: usize,
-    #[clap(long="min-spacing", default_value_t = 30, help_heading = "SKETCHING", help = "Minimum spacing between selected k-mers on the database genomes. Does nothing for pre-sketched files")]
+    #[clap(long="min-spacing", default_value_t = 30, help_heading = "SKETCHING", help = "Minimum spacing between selected k-mers on the contigs.")]
     pub min_spacing_kmer: usize,
 
     //Hidden options that are embedded in the args but no longer used... 
@@ -119,4 +115,6 @@ pub struct ContainArgs {
 
     #[clap(short='o',long="output-file", help = "Output to this file instead of stdout")]
     pub out_file_name: Option<String>,
+    #[clap(long="concoct-format", help = "Remove contig length, average depth, and variance columns. (default: MetaBAT2 format)")]
+    pub concoct_format: bool,
 }

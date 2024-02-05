@@ -776,14 +776,14 @@ pub fn sketch_pair_sequences(
             break;
         }
     }
-    let num_kmers = read_sketch.kmer_counts.values().sum::<u32>() as f64;
-    let percent = (num_dup_removed as f64)/((read_sketch.kmer_counts.values().sum::<u32>() as f64) + num_dup_removed as f64) * 100.;
-    log::debug!(
-        "Number of sketched k-mers removed due to read duplication for {}: {}. Percentage: {:.2}%",
-        read_sketch.file_name,
-        num_dup_removed,
-        percent,
-    );
+    let _num_kmers = read_sketch.kmer_counts.values().sum::<u32>() as f64;
+    let _percent = (num_dup_removed as f64)/((read_sketch.kmer_counts.values().sum::<u32>() as f64) + num_dup_removed as f64) * 100.;
+    //log::debug!(
+    //    "Number of sketched k-mers removed due to read duplication for {}: {}. Percentage: {:.2}%",
+    //    read_sketch.file_name,
+    //    num_dup_removed,
+    //    percent,
+    //);
     read_sketch.mean_read_length = mean_read_length;
     return Some(read_sketch);
 }
@@ -805,6 +805,7 @@ pub fn sketch_sequences_needle(
 
     if !reader.is_ok() {
         warn!("{} is not a valid fasta/fastq file; skipping.", ref_file);
+        return None
     } else {
         let mut reader = reader.unwrap();
         while let Some(record) = reader.next() {

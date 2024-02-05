@@ -1,7 +1,7 @@
 use clap::Parser;
-use sylph_bc::cmdline::*;
-use sylph_bc::sketch;
-use sylph_bc::contain;
+use fairy::cmdline::*;
+use fairy::sketch;
+use fairy::contain;
 //use std::panic::set_hook;
 
 //Use this allocator when statically compiling

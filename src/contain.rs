@@ -18,7 +18,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::Mutex;
 
-fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>) {
+fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>, args: &ContainArgs) {
 
     let mut matrix: FxHashMap<&str, FxHashMap<&str,(f64,f64)>> = FxHashMap::default();
     let mut readset = FxHashSet::default();
@@ -30,39 +30,63 @@ fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSke
     //debug!("number of contigs processed {}", ani_results.len());
     //dbg!(&matrix);
 
-    let mut contig_list_sorted = genome_sketches.iter().map(|x| x.first_contig_name.as_str()).collect::<Vec<&str>>();
+    let contig_list_sorted = genome_sketches.iter().map(|x| x.first_contig_name.as_str()).collect::<Vec<&str>>();
     //dbg!(&contig_list_sorted[0..10]);
     let contig_to_size = genome_sketches.iter().map(|x| (x.first_contig_name.as_str(), x.gn_size)).collect::<FxHashMap<&str, usize>>();
     let mut read_list_sorted = readset.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
 
-    sort(&mut contig_list_sorted);
+    //sort(&mut contig_list_sorted);
     sort(&mut read_list_sorted);
 
-    write!(writer, "contigName\tcontigLen\ttotalAvgDepth").unwrap();
-    for read_name in read_list_sorted.iter(){
-        write!(writer, "\t{}\t{}-var", read_name, read_name).unwrap();
+    if args.concoct_format{
+        write!(writer, "contigName").unwrap();
+        for read_name in read_list_sorted.iter(){
+            write!(writer, "\t{}", read_name).unwrap();
+        }
+    }
+    else{
+        write!(writer, "contigName\tcontigLen\ttotalAvgDepth").unwrap();
+        for read_name in read_list_sorted.iter(){
+            write!(writer, "\t{}\t{}-var", read_name, read_name).unwrap();
+        }
     }
     write!(writer, "\n").unwrap();
     for contig in contig_list_sorted{
         write!(writer, "{}", contig.split(' ').collect::<Vec<&str>>()[0]).unwrap();
-        write!(writer, "\t{}", contig_to_size[contig]).unwrap();
+        if !args.concoct_format{
+            write!(writer, "\t{}", contig_to_size[contig]).unwrap();
+        }
         let mut avg_cov = 0.;
         if matrix.contains_key(contig){
             for value in matrix[contig].values(){
                 avg_cov += value.0;
             }
-            avg_cov /= matrix[contig].values().len() as f64;
         }
         else{
         }
-        write!(writer, "\t{}", avg_cov).unwrap();
+        avg_cov /= read_list_sorted.len() as f64;
+        if !args.concoct_format{
+            write!(writer, "\t{}", avg_cov).unwrap();
+        }
         for read in read_list_sorted.iter(){
-            if matrix.contains_key(contig) && matrix[contig].contains_key(read){
-                let (cov, var) = matrix[&contig][read];
-                write!(writer, "\t{}\t{}", cov, var).unwrap();
+            if !args.concoct_format{
+                if matrix.contains_key(contig) && matrix[contig].contains_key(read){
+                    let (cov, var) = matrix[&contig][read];
+                    write!(writer, "\t{}\t{}", cov, var).unwrap();
+                }
+                else{
+                    write!(writer, "\t0\t0").unwrap();
+                }
             }
             else{
-                write!(writer, "\t0\t0").unwrap();
+                if matrix.contains_key(contig) && matrix[contig].contains_key(read){
+                    let (cov, _var) = matrix[&contig][read];
+                    write!(writer, "\t{}", cov).unwrap();
+                }
+                else{
+                    write!(writer, "\t0").unwrap();
+                }
+
             }
         }
         write!(writer, "\n").unwrap();
@@ -70,7 +94,7 @@ fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSke
 
 }
 
-fn print_ani_result(ani_result: &AniResult, pseudotax: bool, writer: &mut Box<dyn Write + Send>) {
+fn _print_ani_result(ani_result: &AniResult, pseudotax: bool, writer: &mut Box<dyn Write + Send>) {
     let print_final_ani = format!("{:.2}", f64::min(ani_result.final_est_ani * 100., 100.));
     let lambda_print;
     if let AdjustStatus::Lambda(lambda) = ani_result.lambda {
@@ -252,20 +276,20 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
     }
 
     if genome_sketch_files.is_empty() && genome_files.is_empty(){
-        log::error!("No genome files found; see sylph query/profile -h for help. Exiting");
+        log::error!("No contigs files found; see fairy coverage -h for help. Exiting");
         std::process::exit(1);
     }
 
     if read_sketch_files.is_empty() && read_files.is_empty(){
-        log::error!("No read files found; see sylph query/profile -h for help. Exiting");
+        log::error!("No read files found; see fairy coverage -h for help. Exiting");
         std::process::exit(1);
     }
 
     let genome_sketches_vec = get_genome_sketches(&args, &genome_sketch_files, &genome_files);
-    log::info!("Finished obtaining genome sketches.");
+    log::info!("Finished indexing contigs.");
 
     if genome_sketches_vec.is_empty() {
-        log::error!("No genome sketches found; see sylph query/profile -h for help. Exiting");
+        log::error!("No contigs found; see fariy coverage -h for help. Exiting");
         std::process::exit(1);
     }
 
@@ -280,16 +304,10 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
     }
     else{
         if args.pseudotax{
-            step = args.threads/3 + 1;
+            step = args.threads/2 + 1;
         }
         else{
             step = 1
-        }
-    }
-
-    if args.estimate_unknown{
-        if args.seq_id.is_none(){
-            log::info!("--estimate-unknown specified but --read-seq-id is not. Estimating sequence identity from reads.");
         }
     }
 
@@ -323,21 +341,16 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                 let sequence_sketch = get_seq_sketch(&args, read_files[j], is_sketch, c, k);
                 if sequence_sketch.is_some(){
                     let sequence_sketch = sequence_sketch.unwrap();
-                    
+                    if sequence_sketch.mean_read_length > 1000. && args.seq_id > 99. {
+                        log::info!("Long reads detected and --read-seq-id >= 99. If using older, error prone reads, set --read-seq-id lower for slightly better results.");
+                    }
+
                     let kmer_id_opt;
-                    if args.seq_id.is_some(){
-                        kmer_id_opt = Some((args.seq_id.unwrap()/100.).powf(sequence_sketch.k as f64));
-                    }
-                    else{
-                        kmer_id_opt = get_kmer_identity(&sequence_sketch, args.estimate_unknown);
-                    }
-                    if args.estimate_unknown{
-                        log::debug!("{} has estimated kmer identity {:.3}.", &read_files[j], kmer_id_opt.unwrap());
-                        if kmer_id_opt.is_some() && kmer_id_opt.unwrap().powf(1./sequence_sketch.k as f64) > 0.98{
-                        }
-                        else if args.seq_id.is_none(){
-                            log::warn!("{} has estimated identity {:.3} < 98%, indicating low-depth of coverage, highly diverse samples, or noisy reads. If using accurate reads (> 98% id), --estimate-unknown option is unreliable. Strongly consider using --read-seq-id.",  &read_files[j], kmer_id_opt.unwrap().powf(1./sequence_sketch.k as f64) * 100.);
-                        }
+                    kmer_id_opt = Some((args.seq_id/100.).powf(sequence_sketch.k as f64));
+                    log::debug!("{} has estimated kmer identity {:.3}.", &read_files[j], kmer_id_opt.unwrap());
+                    if kmer_id_opt.is_none(){
+                        log::error!("Something went wrong with read sequence identity processing for {}. Exiting",  &read_files[j]);
+                        std::process::exit(1);
                     }
                     
                     let genome_index_vec = (0..genome_sketches.len()).into_iter().collect::<Vec<usize>>();
@@ -352,9 +365,9 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                     });
 
                     let mut stats_vec_seq = stats_vec_seq.into_inner().unwrap();
-                    estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, args.estimate_unknown, sequence_sketch.mean_read_length, sequence_sketch.k);
+                    estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, true, sequence_sketch.mean_read_length, sequence_sketch.k);
 
-                    log::info!("{} reassigning k-mers for {} genomes...", &read_files[j], stats_vec_seq.len());
+                    log::info!("{} reassigning k-mers for {} contigs...", &read_files[j], stats_vec_seq.len());
                     let winner_map = winner_table(&stats_vec_seq);
                     let remaining_genomes = stats_vec_seq.iter().map(|x| x.genome_sketch).collect::<Vec<&GenomeSketch>>();
                     let stats_vec_seq_2 = Mutex::new(vec![]);
@@ -366,26 +379,24 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                     });
                     //stats_vec_seq = derep_if_reassign_threshold(&stats_vec_seq, stats_vec_seq_2.into_inner().unwrap(), args.redundant_ani, sequence_sketch.k);
                     //stats_vec_seq = stats_vec_seq_2.into_inner().unwrap();
-                    estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, args.estimate_unknown, sequence_sketch.mean_read_length, sequence_sketch.k);
-                    log::info!("{} has {} genomes passing profiling threshold. ", &read_files[j], stats_vec_seq.len());
+                    estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, true, sequence_sketch.mean_read_length, sequence_sketch.k);
+                    log::info!("{} has {} contigs passing ANI threshold. ", &read_files[j], stats_vec_seq.len());
 
                     let bases_explained;
-                    if args.estimate_unknown{
-                        bases_explained = estimate_covered_bases(&stats_vec_seq, &sequence_sketch, sequence_sketch.mean_read_length, sequence_sketch.k);
-                        log::info!("{} has {:.2}% of reads detected in database by profile", &read_files[j], bases_explained * 100.);
-                    }
+                    bases_explained = estimate_covered_bases(&stats_vec_seq, &sequence_sketch, sequence_sketch.mean_read_length, sequence_sketch.k);
+                    log::info!("{} has approximately {:.2}% of reads detected in contigs", &read_files[j], bases_explained * 100.);
                     stats_vec_seq_all.lock().unwrap().extend(stats_vec_seq_2.into_inner().unwrap());
                 }
                 log::info!("Finished sample {}.", &read_files[j]);
             });
         });
-        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &genome_sketches,&mut out_writer);
+        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &genome_sketches,&mut out_writer, &args);
     }
 
-    log::info!("sylph finished.");
+    log::info!("fairy finished.");
 }
 
-fn derep_if_reassign_threshold<'a>(results_old: &Vec<AniResult>, results_new: Vec<AniResult<'a>>, ani_thresh: f64, k: usize) -> Vec<AniResult<'a>>{
+fn _derep_if_reassign_threshold<'a>(results_old: &Vec<AniResult>, results_new: Vec<AniResult<'a>>, ani_thresh: f64, k: usize) -> Vec<AniResult<'a>>{
     let ani_thresh = ani_thresh/100.;
 
     let mut gn_sketch_to_contain = FxHashMap::default();
@@ -467,7 +478,7 @@ fn winner_table<'a>(results : &'a Vec<AniResult>) -> FxHashMap<Kmer, (f64,&'a Ge
     return kmer_to_genome_map;
 }
 
-fn print_header(pseudotax: bool, writer: &mut Box<dyn Write + Send>, estimate_unknown: bool) {
+fn _print_header(pseudotax: bool, writer: &mut Box<dyn Write + Send>, estimate_unknown: bool) {
     if !pseudotax{
         writeln!(writer,
             //"Sample_file\tQuery_file\tAdjusted_ANI\tNaive_ANI\tANI_5-95_percentile\tEff_cov\tEff_lambda\tLambda_5-95_percentile\tMedian_cov\tMean_cov_geq1\tContainment_ind\tContig_name",
@@ -1133,7 +1144,7 @@ fn mme_lambda(full_covs: &[u32]) -> Option<f64> {
     }
 }
 
-fn get_kmer_identity(seq_sketch: &SequencesSketch, estimate_unknown: bool) -> Option<f64>{
+fn _get_kmer_identity(seq_sketch: &SequencesSketch, estimate_unknown: bool) -> Option<f64>{
     if !estimate_unknown{
         return None
     }
