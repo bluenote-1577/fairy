@@ -70,7 +70,7 @@ pub struct ContainArgs {
     pub min_count_correct: f64,
     #[clap(short='M',long,default_value_t = 8., help_heading = "ALGORITHM", help = "Exclude genomes with less than this number of sampled k-mers")]
     pub min_number_kmers: f64,
-    #[clap(short, long="minimum-ani", help_heading = "ALGORITHM", help = "Minimum adjusted ANI to consider (0-100) for coverage calculation. Default is 95." )]
+    #[clap(short, long="minimum-ani", help_heading = "ALGORITHM", help = "Minimum adjusted ANI to consider (0-100) for coverage calculation. Default is 95. Don't lower this unless you know what you're doing" )]
     pub minimum_ani: Option<f64>,
     #[clap(short, default_value_t = 3, help = "Number of threads")]
     pub threads: usize,
