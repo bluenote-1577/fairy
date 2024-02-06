@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
-#[clap(author, version, about = "Shotgun metagenomic coverage calculation for contigs.\n\n--- Preparing inputs by sketching (indexing)\n\n## index paired-end reads\nsylph sketch -1 a_1.fq b_1.fq -2 b_2.fq b_2.fq -d paired_sketches\n\n## coverage matrix output\nsylph coverage sketches/*.sylsp contigs1.fa contigs2.fa ... -o coverage_matrix.tsv", arg_required_else_help = true, disable_help_subcommand = true)]
+#[clap(author, version, about = "Shotgun metagenomic coverage calculation for contigs.\n\n## index paired-end reads\nfairy sketch -1 a_1.fq b_1.fq -2 b_2.fq b_2.fq -d paired_sketches\n\n## coverage matrix output\nfairy coverage sketches/*.bcsp contigs1.fa contigs2.fa ... -o coverage_matrix.tsv", arg_required_else_help = true, disable_help_subcommand = true)]
 pub struct Cli {
     #[clap(subcommand,)]
     pub mode: Mode,
@@ -9,7 +9,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Mode {
-    /// Sketch (index) reads. Each sample.fq -> sample.sylsp. 
+    /// Sketch (index) reads. Each sample.fq -> sample.bcsp. 
     Sketch(SketchArgs),
     ///Extremely fast species-level coverage calculation by k-mer sketching.
     Coverage(ContainArgs),
@@ -60,7 +60,7 @@ pub struct SketchArgs {
 
 #[derive(Args)]
 pub struct ContainArgs {
-    #[clap(multiple=true, help = "Pre-sketched *.syldb/*.sylsp files. Raw fastq/fasta are allowed and will be automatically sketched to .sylsp/.syldb")]
+    #[clap(multiple=true, help = "Pre-sketched *.bcsp files and raw fasta/gzip contig files")]
     pub files: Vec<String>,
 
     #[clap(short='l',long="list", help = "Newline delimited file of file inputs")]
@@ -81,7 +81,7 @@ pub struct ContainArgs {
     #[clap(long="debug", help = "Debug output")]
     pub debug: bool,
 
-    #[clap(short='I',long="read-seq-id", default_value_t=99.5, help_heading = "ALGORITHM", help = "Mean sequence identity of reads (0-100). Only needed if using moderate error reads (e.g. nanopore)")]
+    #[clap(short='I',long="read-seq-id", default_value_t=99.5, help_heading = "ALGORITHM", help = "Rough estimate for sequence identity of reads (0-100). Only needed if using moderate error reads (e.g. nanopore)")]
     pub seq_id: f64,
 
     //#[clap(short='l', long="read-length", help_heading = "ALGORITHM", help = "Read length (single-end length for pairs). Only necessary for short-read coverages when using --estimate-unknown. Not needed for long-reads" )]
