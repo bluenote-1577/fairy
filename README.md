@@ -2,21 +2,21 @@
 
 **Fairy** is a program that can get _approximate_ coverages for metagenomic reads against assembled contigs. Fairy is a derivative of the profiler [sylph](https://github.com/bluenote-1577/sylph) but is modified specifically for **metagenomic binning purposes**.
 
+Fairy is designed for **multi-sample** usage and short-reads or nanopore reads. Do not use fairy for **single-sample** binning. 
+
 ### Introduction
 
 After metagenomic assembly, optimal workflows require aligning reads for **all metagenomic read samples** against contigs to obtain coverages before using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
-### Results
+### Short-reads 
+Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). 
 
-#### Short-reads 
-Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for **multi-sample** binning recovers a similar amount of high-quality bins. Do not use fairy for **single-sample** binning. 
+### Long-reads
+**Non-HiFi:** For simplex nanopore reads, fairy seems to be comparable with minimap2. 
 
-#### Long-reads
-**Non-HiFi:** For simplex nanopore reads and not-strain-resolved assemblies, fairy seems to be comparable with minimap2. 
-
-**HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). I do not recommend using fairy. 
+**HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). 
 
 ##  Install (current version v0.5.1)
 
