@@ -11,7 +11,7 @@ After metagenomic assembly, optimal workflows require aligning reads for **all m
 ### Results
 
 #### Short-reads 
-Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for *multi-sample* binning recovers a similar amount of high-quality bins. Use an aligner for single-sample binning instead of fairy.
+Preliminary binning results show that using fairy instead of [BWA](https://github.com/lh3/bwa) for **multi-sample** binning recovers a similar amount of high-quality bins. Do not use fairy for **single-sample** binning. 
 
 #### Long-reads
 **Non-HiFi:** For simplex nanopore reads and not-strain-resolved assemblies, fairy seems to be comparable with minimap2. 
@@ -40,7 +40,7 @@ cd fairy
 
 # If default rust install directory is ~/.cargo
 cargo install --path . 
-fairy coverage test_files/*
+fairy -h 
 ```
 #### Option 3: Pre-built x86-64 linux statically compiled executable
 
@@ -69,8 +69,19 @@ fairy coverage sketch_dir/*.bcsp contigs.fa -t 10 -o coverage.tsv
 
 ## Output
 
-The output is compatible with the `jgi_summarize_bam_contig_depths` script from metabat2. TODO
+The output is compatible with the `jgi_summarize_bam_contig_depths` script from metabat2 (the column names are different, however). 
 
-## Citing sylph
+```sh
+contigName  contigLen  totalAvgDepth  reads1.fq  reads1.fq-var  reads2.fq  reads2.fq-var  ...
+contig_1    38370      1.4            1.4        1.1100          0       0
+...
+```
 
-TODO
+1. First three columns give the name, the length, and average coverage.
+2. The next columns are `mean coverage` and `coverage variance` for each sample.
+
+`--concoct-format` is also available if you don't need the variances.
+
+## Citing fairy
+
+Forthcoming.
