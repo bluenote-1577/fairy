@@ -11,7 +11,7 @@ After metagenomic assembly, optimal workflows require aligning reads for **all m
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
 ### Short-reads 
-Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). 
+Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). I've seen fairy get even better bins than read alignment using the same binner, but don't expect a sensitivity gain.
 
 ### Long-reads
 **Non-HiFi:** For simplex nanopore reads, fairy seems to be comparable with minimap2. 
