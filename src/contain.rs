@@ -18,7 +18,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::Mutex;
 
-fn print_cov_matrix(ani_results: Vec<AniResult>, read_files: &Vec<&String>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>, args: &ContainArgs) {
+fn print_cov_matrix(ani_results: Vec<AniResult>, read_files: &FxHashSet<String>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>, args: &ContainArgs) {
 
     let mut matrix: FxHashMap<&str, FxHashMap<&str,(f64,f64)>> = FxHashMap::default();
     for res in ani_results.iter(){
@@ -390,7 +390,7 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                 log::info!("Finished sample {}.", &read_files[j]);
             });
         });
-        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &read_files, &genome_sketches,&mut out_writer, &args);
+        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &sequence_file_names.into_inner().unwrap(), &genome_sketches,&mut out_writer, &args);
     }
 
     log::info!("fairy finished.");
