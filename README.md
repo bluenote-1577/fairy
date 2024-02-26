@@ -1,8 +1,12 @@
 # fairy - fast approximate contig coverage for metagenomic binning
 
-### Introduction
+## Introduction - multi-sample coverage problem
 
-After metagenomic assembly, optimal workflows require aligning **all metagenomic reads** against all assemblies to obtain coverages. Then, metagenome-assembled genomes (MAGs) are generated using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
+After metagenomic assembly, optimal workflows require aligning **all metagenomic reads** against all assemblies to obtain coverages. Then, metagenome-assembled genomes (MAGs) are generated using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). 
+
+Unfortunately, all-to-all alignment of samples to assemblies is very slow.
+
+## Fairy for fast multi-sample coverage
 
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
