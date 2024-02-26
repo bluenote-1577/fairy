@@ -65,6 +65,9 @@ fairy sketch -1 *_1.fastq.gz -2 *_2.fastq.gz -d sketch_dir
 # sketch/index long reads
 fairy sketch -r long_reads.fq -d sketch_dir
 
+# rename the sketches if filenames are identical
+fairy sketch -r dir1/reads.fq dir2/reads.fq -S sample1 sample2 -d sketch_dir
+
 # calculate coverage
 fairy coverage sketch_dir/*.bcsp contigs.fa -t 10 -o coverage.tsv
 ```
