@@ -14,6 +14,96 @@ fn fresh(){
 
 #[serial]
 #[test]
+fn test_basic(){
+    let mut output = Command::cargo_bin("fairy").unwrap();
+    let output = output
+        .arg("coverage")
+        .arg("./test_files/o157_reads_100.fastq.gz")
+        .arg("./test_files/e.coli-o157.fasta.gz")
+        .output()
+        .expect("Output failed");
+    let stdout = str::from_utf8(&output.stdout).expect("Output was not valid UTF-8");
+    dbg!(stdout.matches('\n').count());
+    assert!(stdout.matches('\n').count() == 3);
+}
+
+#[serial]
+#[test]
+fn test_sketch(){
+    fresh();
+    let mut cmd = Command::cargo_bin("fairy").unwrap();
+    let assert = cmd
+        .arg("sketch")
+        .arg("-1")
+        .arg("./test_files/coli1.fq.gz")
+        .arg("-2")
+        .arg("./test_files/coli2.fq.gz")
+        .arg("-d")
+        .arg("./tests/results/test_sketch_dir")
+        .assert();
+    assert.success().code(0);
+    assert!(Path::new("./tests/results/test_sketch_dir/coli1.fq.gz.paired.bcsp").exists(), "Output file was not created");
+
+    let mut cmd = Command::cargo_bin("fairy").unwrap();
+    let assert = cmd
+        .arg("sketch")
+        .arg("-1")
+        .arg("./test_files/coli1.fq.gz")
+        .arg("-2")
+        .arg("./test_files/coli2.fq.gz")
+        .arg("-d")
+        .arg("./tests/results/test_sketch_dir")
+        .arg("--lS")
+        .arg("./test_files/sample_list.txt")
+        .assert();
+    assert.success().code(0);
+    assert!(Path::new("./tests/results/test_sketch_dir/S1.paired.bcsp").exists(), "Output file was not created");
+
+    let mut cmd = Command::cargo_bin("fairy").unwrap();
+    let output = cmd
+        .arg("coverage")
+        .arg("./tests/results/test_sketch_dir/S1.paired.bcsp")
+        .arg("./test_files/e.coli-o157.fasta.gz")
+        .output()
+        .expect("Output failed");
+    let stdout = str::from_utf8(&output.stdout).expect("Output was not valid UTF-8");
+
+    //stdout is a tsv file. I want to check if the 2nd row's 3rd column is > 0
+    let mut lines = stdout.lines();
+    lines.next();
+    let line = lines.next().unwrap();
+    let mut cols = line.split('\t');
+    cols.next();
+    cols.next();
+    let cov1 = cols.next().unwrap().parse::<f64>().unwrap();
+    let cov2 = cols.next().unwrap().parse::<f64>().unwrap();
+    dbg!("{},{}",cov1, cov2);
+    assert!(cov1 == cov2);
+    assert!(cov2 > 0.1);
+
+    let mut cmd = Command::cargo_bin("fairy").unwrap();
+    let output = cmd
+        .arg("coverage")
+        .arg("./tests/results/test_sketch_dir/coli1.fq.gz.paired.bcsp")
+        .arg("./test_files/e.coli-o157.fasta.gz")
+        .output()
+        .expect("Output failed");
+    let stdout = str::from_utf8(&output.stdout).expect("Output was not valid UTF-8");
+
+    //stdout is a tsv file. I want to check if the 2nd row's 3rd column is > 0
+    let mut lines = stdout.lines();
+    lines.next();
+    let line = lines.next().unwrap();
+    let mut cols = line.split('\t');
+    cols.next();
+    cols.next();
+    let cov1 = cols.next().unwrap().parse::<f64>().unwrap();
+    let cov2 = cols.next().unwrap().parse::<f64>().unwrap();
+    dbg!("{},{}",cov1, cov2);
+    assert!(cov1 == cov2);
+    assert!(cov2 > 0.1);
+}
+
 fn test_profile_vs_query(){
 
     let mut output = Command::cargo_bin("sylph").unwrap();
@@ -43,7 +133,6 @@ fn test_profile_vs_query(){
 }
 
 #[serial]
-#[test]
 fn test_sketch_commands() {
     Command::new("rm")
         .arg("-r")
@@ -212,7 +301,6 @@ fn test_sketch_commands() {
 }
 
 #[serial]
-#[test]
 fn test_profile_disabling(){
     fresh();
 
@@ -249,7 +337,6 @@ fn test_profile_disabling(){
 }
 
 #[serial]
-#[test]
 fn test_sketch_fasta_fastq_concord(){
     fresh();
     let mut cmd = Command::cargo_bin("sylph").unwrap();
@@ -300,7 +387,6 @@ fn test_sketch_fasta_fastq_concord(){
 }
 
 #[serial]
-#[test]
 fn test_sample_names(){
     let mut cmd = Command::cargo_bin("sylph").unwrap();
     let assert = cmd
@@ -363,7 +449,6 @@ fn test_sample_names(){
 }
 
 #[serial]
-#[test]
 fn test_fpr(){
     let mut cmd = Command::cargo_bin("sylph").unwrap();
     let assert = cmd
