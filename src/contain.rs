@@ -5,6 +5,7 @@ use std::io::prelude::*;
 use std::io;
 use std::io::BufWriter;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use crate::constants::*;
 use crate::inference::*;
 use crate::sketch::*;
@@ -314,6 +315,7 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
     for genome_sketches in genome_sketches_vec {
         let chunks = get_chunks(&sequence_index_vec, step);
         let stats_vec_seq_all: Mutex<Vec<AniResult>> = Mutex::new(vec![]);
+        let sequence_file_names: Mutex<FxHashSet<String>> = Mutex::new(FxHashSet::default());
         chunks.into_iter().for_each(|chunk| {
             chunk.into_par_iter().for_each(|j|{
                 
@@ -337,6 +339,7 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                 }
                 let sequence_sketch = get_seq_sketch(&args, read_files[j], is_sketch, c, k);
                 if sequence_sketch.is_some(){
+                    sequence_file_names.lock().unwrap().insert(sequence_sketch.as_ref().unwrap().file_name.clone());
                     let sequence_sketch = sequence_sketch.unwrap();
                     if sequence_sketch.mean_read_length > 1000. && args.seq_id > 99. {
                         log::info!("Long reads detected and --read-seq-id >= 99. If using older, error prone reads, set --read-seq-id lower for slightly better results.");
@@ -559,7 +562,7 @@ fn get_seq_sketch(
     if is_sketch_file {
         let read_sketch_file = read_file;
         let file = File::open(read_sketch_file).expect(&format!(
-            "The sketch `{}` could not be opened",
+            "The sketch `{}` could not be opened. Make sure it exists. Exiting.",
             &read_sketch_file
         ));
         let read_reader = BufReader::with_capacity(10_000_000, file);
