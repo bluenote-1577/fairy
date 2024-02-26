@@ -339,7 +339,17 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                 }
                 let sequence_sketch = get_seq_sketch(&args, read_files[j], is_sketch, c, k);
                 if sequence_sketch.is_some(){
-                    sequence_file_names.lock().unwrap().insert(sequence_sketch.as_ref().unwrap().file_name.clone());
+
+                    {
+                        let seq_sketch = sequence_sketch.as_ref().unwrap();
+                        if let Some(sample) = &seq_sketch.sample_name{
+                            sequence_file_names.lock().unwrap().insert(sample.clone());
+                        }
+                        else{
+                            sequence_file_names.lock().unwrap().insert(seq_sketch.file_name.clone());
+                        }
+                    }
+
                     let sequence_sketch = sequence_sketch.unwrap();
                     if sequence_sketch.mean_read_length > 1000. && args.seq_id > 99. {
                         log::info!("Long reads detected and --read-seq-id >= 99. If using older, error prone reads, set --read-seq-id lower for slightly better results.");
