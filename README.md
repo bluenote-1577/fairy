@@ -80,7 +80,7 @@ contig_1    38370      1.4            1.4        1.1100          0       0
 
 The above output can be fed directly into MetaBAT2 with default parameters. 
 
-Alternatively, `--concoct-format` works with MaxBin2 and is also available if you don't need the variances.
+Alternatively, `--maxbin-format` works directly with MaxBin2 and is also available. This removes the variance columns as well as the `contigLen` and `totalAvgDepth` columns. 
 
 ## Citing fairy
 
