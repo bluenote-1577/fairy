@@ -13,14 +13,14 @@ Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 ### Important: fairy is designed for **multi-sample** usage and short reads or nanopore reads. Do not use fairy for **single-sample** binning. 
 
 ### Short-reads 
-Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). I've seen fairy get even better bins than read alignment using the same binner, but don't expect a sensitivity gain.
+Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). Preliminary testing indicates that fairy may perform as good as (and sometimes better than) BWA on host-associated datasets and slightly worse (but usable) on environmental datasets.
 
 ### Long-reads
 **Non-HiFi:** For simplex nanopore reads, fairy seems to be comparable with minimap2. 
 
 **HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). 
 
-##  Install (current version v0.5.1)
+##  Install (current version v0.5.2)
 
 #### Option 1: conda install 
 
