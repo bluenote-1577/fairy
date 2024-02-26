@@ -67,7 +67,9 @@ fairy coverage sketch_dir/*.bcsp contigs.fa -t 10 -o coverage.tsv
 
 ## Output
 
-The output is compatible with the `jgi_summarize_bam_contig_depths` script from MetaBAT2 (the column names are different, however). 
+### MetaBAT2 format (default)
+
+The default output is compatible with the `jgi_summarize_bam_contig_depths` script from MetaBAT2 (the column names are different, however). 
 
 ```sh
 contigName  contigLen  totalAvgDepth  reads1.fq  reads1.fq-var  reads2.fq  reads2.fq-var  ...
@@ -79,6 +81,8 @@ contig_1    38370      1.4            1.4        1.1100          0       0
 2. The next columns are `mean coverage` and `coverage variance` for each sample.
 
 The above output can be fed directly into MetaBAT2 with default parameters. 
+
+### MaxBin2 format
 
 Alternatively, `--maxbin-format` works directly with MaxBin2 and is also available. This removes the variance columns as well as the `contigLen` and `totalAvgDepth` columns. 
 
