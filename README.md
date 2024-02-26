@@ -10,7 +10,7 @@ Unfortunately, all-to-all alignment of samples to assemblies is very slow.
 
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
-Important: fairy is designed for **multi-sample** usage and short reads or nanopore reads. Do not use fairy for **single-sample** binning. 
+### Important: fairy is designed for **multi-sample** usage and short reads or nanopore reads. Do not use fairy for **single-sample** binning. 
 
 ### Short-reads 
 Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). I've seen fairy get even better bins than read alignment using the same binner, but don't expect a sensitivity gain.
