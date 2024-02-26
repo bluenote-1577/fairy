@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
-#[clap(author, version, about = "Shotgun metagenomic coverage calculation for contigs.\n\n## index paired-end reads\nfairy sketch -1 a_1.fq b_1.fq -2 b_2.fq b_2.fq -d paired_sketches\n\n## coverage matrix output\nfairy coverage sketches/*.bcsp contigs1.fa contigs2.fa ... -o coverage_matrix.tsv", arg_required_else_help = true, disable_help_subcommand = true)]
+#[clap(author, version, about = "Approximate metagenomic coverage calculation for contigs.\n\n## index paired-end reads\nfairy sketch -1 a_1.fq b_1.fq -2 b_2.fq b_2.fq -d paired_sketches\n\n## coverage matrix output\nfairy coverage sketches/*.bcsp contigs1.fa contigs2.fa ... -o coverage_matrix.tsv", arg_required_else_help = true, disable_help_subcommand = true)]
 pub struct Cli {
     #[clap(subcommand,)]
     pub mode: Mode,
@@ -60,10 +60,10 @@ pub struct SketchArgs {
 
 #[derive(Args)]
 pub struct ContainArgs {
-    #[clap(multiple=true, help = "Pre-sketched *.bcsp files and raw fasta/gzip contig files")]
+    #[clap(multiple=true, help = "Pre-sketched *.bcsp files and raw fasta/gzip contig files", help_heading = "INPUT")]
     pub files: Vec<String>,
 
-    #[clap(short='l',long="list", help = "Newline delimited file of file inputs")]
+    #[clap(short='l',long="list", help = "Newline delimited file of file inputs", help_heading = "INPUT")]
     pub file_list: Option<String>,
 
     #[clap(long,hidden=true,default_value_t = 3., help_heading = "ALGORITHM", help = "Minimum k-mer multiplicity needed for coverage correction. Higher values gives more precision but lower sensitivity")]
@@ -113,8 +113,8 @@ pub struct ContainArgs {
     #[clap(long="no-adjust", hidden=true)]
     pub no_adj: bool,
 
-    #[clap(short='o',long="output-file", help = "Output to this file instead of stdout")]
+    #[clap(short='o',long="output-file", help = "Output to this file instead of stdout", help_heading = "OUTPUT")]
     pub out_file_name: Option<String>,
-    #[clap(long="concoct-format", help = "Remove contig length, average depth, and variance columns. (default: MetaBAT2 format)")]
+    #[clap(long="maxbin-format", help = "Remove contig length, average depth, and variance columns. (default: MetaBAT2 format with variances)", help_heading="OUTPUT")]
     pub concoct_format: bool,
 }

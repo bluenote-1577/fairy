@@ -5,7 +5,6 @@ use std::io::prelude::*;
 use std::io;
 use std::io::BufWriter;
 use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use crate::constants::*;
 use crate::inference::*;
 use crate::sketch::*;
@@ -18,13 +17,11 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::Mutex;
 
-fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>, args: &ContainArgs) {
+fn print_cov_matrix(ani_results: Vec<AniResult>, read_files: &Vec<&String>, genome_sketches: &Vec<GenomeSketch>, writer: &mut Box<dyn Write + Send>, args: &ContainArgs) {
 
     let mut matrix: FxHashMap<&str, FxHashMap<&str,(f64,f64)>> = FxHashMap::default();
-    let mut readset = FxHashSet::default();
     for res in ani_results.iter(){
         let inner = matrix.entry(res.contig_name).or_insert(FxHashMap::default());
-        readset.insert(res.seq_name.to_string());
         inner.insert(&res.seq_name, (res.final_est_cov, res.var));
     }
     //debug!("number of contigs processed {}", ani_results.len());
@@ -33,7 +30,7 @@ fn print_cov_matrix(ani_results: Vec<AniResult>, genome_sketches: &Vec<GenomeSke
     let contig_list_sorted = genome_sketches.iter().map(|x| x.first_contig_name.as_str()).collect::<Vec<&str>>();
     //dbg!(&contig_list_sorted[0..10]);
     let contig_to_size = genome_sketches.iter().map(|x| (x.first_contig_name.as_str(), x.gn_size)).collect::<FxHashMap<&str, usize>>();
-    let mut read_list_sorted = readset.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
+    let mut read_list_sorted = read_files.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
 
     //sort(&mut contig_list_sorted);
     sort(&mut read_list_sorted);
@@ -378,19 +375,19 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                         }
                     });
                     //stats_vec_seq = derep_if_reassign_threshold(&stats_vec_seq, stats_vec_seq_2.into_inner().unwrap(), args.redundant_ani, sequence_sketch.k);
-                    //stats_vec_seq = stats_vec_seq_2.into_inner().unwrap();
+                    stats_vec_seq = stats_vec_seq_2.into_inner().unwrap();
                     estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, true, sequence_sketch.mean_read_length, sequence_sketch.k);
                     log::info!("{} has {} contigs passing ANI threshold. ", &read_files[j], stats_vec_seq.len());
 
                     let bases_explained;
                     bases_explained = estimate_covered_bases(&stats_vec_seq, &sequence_sketch, sequence_sketch.mean_read_length, sequence_sketch.k);
-                    log::info!("{} has approximately {:.2}% of reads detected in contigs", &read_files[j], bases_explained * 100.);
-                    stats_vec_seq_all.lock().unwrap().extend(stats_vec_seq_2.into_inner().unwrap());
+                    log::info!("{} has approximately {:.2}% of reads detected in contigs (only accurate for short-reads)", &read_files[j], bases_explained * 100.);
+                    stats_vec_seq_all.lock().unwrap().extend(stats_vec_seq);
                 }
                 log::info!("Finished sample {}.", &read_files[j]);
             });
         });
-        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &genome_sketches,&mut out_writer, &args);
+        print_cov_matrix(stats_vec_seq_all.into_inner().unwrap(), &read_files, &genome_sketches,&mut out_writer, &args);
     }
 
     log::info!("fairy finished.");

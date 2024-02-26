@@ -146,7 +146,7 @@ fn check_args_valid(args: &SketchArgs) {
         && args.list_first_pair.is_none()
         && args.list_second_pair.is_none()
     {
-        error!("No input sequences found; see sylph sketch -h for help. Exiting.");
+        error!("No input sequences found; see fairy sketch -h for help. Exiting.");
         std::process::exit(1);
     }
 
