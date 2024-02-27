@@ -24,7 +24,10 @@ Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sa
 
 #### Option 1: conda install 
 
-FORTHCOMING
+```sh
+mamba install -c bioconda fairy
+# conda install -c bioconda fairy
+```
 
 #### Option 2: Build from source
 
