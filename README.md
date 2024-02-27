@@ -29,6 +29,8 @@ mamba install -c bioconda fairy
 # conda install -c bioconda fairy
 ```
 
+**Warning**: If you're using linux, conda may require AVX2 instructions (e.g. a newer CPU). Source install (option 2) and the static binary (option 3) should still work. 
+
 #### Option 2: Build from source
 
 Requirements:
