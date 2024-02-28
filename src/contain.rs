@@ -351,9 +351,9 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                     }
 
                     let sequence_sketch = sequence_sketch.unwrap();
-                    if sequence_sketch.mean_read_length > 1000. && args.seq_id > 99. {
-                        log::info!("Long reads detected and --read-seq-id >= 99. If using older, error prone reads, set --read-seq-id lower for slightly better results.");
-                    }
+//                    if sequence_sketch.mean_read_length > 1000. && args.seq_id > 99. {
+                        //log::info!("Long reads detected and --read-seq-id >= 99. If using older, error prone reads, set --read-seq-id lower for slightly better results.");
+//                    }
 
                     let kmer_id_opt;
                     kmer_id_opt = Some((args.seq_id/100.).powf(sequence_sketch.k as f64));
@@ -375,7 +375,17 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                     });
 
                     let mut stats_vec_seq = stats_vec_seq.into_inner().unwrap();
+
                     estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, true, sequence_sketch.mean_read_length, sequence_sketch.k);
+                    let bases_explained;
+                    bases_explained = estimate_covered_bases(&stats_vec_seq, &sequence_sketch, sequence_sketch.mean_read_length, sequence_sketch.k);
+                    if !stats_vec_seq.is_empty(){
+                        log::info!("{} has approximately {:.2}% of reads detected 
+                            in contigs {} (only accurate for low-error reads)", 
+                            &read_files[j], 
+                            bases_explained * 100., 
+                            &stats_vec_seq[0].genome_sketch.file_name);
+                    }
 
                     log::info!("{} reassigning k-mers for {} contigs...", &read_files[j], stats_vec_seq.len());
                     let winner_map = winner_table(&stats_vec_seq);
@@ -388,13 +398,10 @@ pub fn contain(mut args: ContainArgs, pseudotax_in: bool) {
                         }
                     });
                     //stats_vec_seq = derep_if_reassign_threshold(&stats_vec_seq, stats_vec_seq_2.into_inner().unwrap(), args.redundant_ani, sequence_sketch.k);
+                    //estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, true, sequence_sketch.mean_read_length, sequence_sketch.k);
                     stats_vec_seq = stats_vec_seq_2.into_inner().unwrap();
-                    estimate_true_cov(&mut stats_vec_seq, kmer_id_opt, true, sequence_sketch.mean_read_length, sequence_sketch.k);
                     log::info!("{} has {} contigs passing ANI threshold. ", &read_files[j], stats_vec_seq.len());
 
-                    let bases_explained;
-                    bases_explained = estimate_covered_bases(&stats_vec_seq, &sequence_sketch, sequence_sketch.mean_read_length, sequence_sketch.k);
-                    log::info!("{} has approximately {:.2}% of reads detected in contigs (only accurate for short-reads)", &read_files[j], bases_explained * 100.);
                     stats_vec_seq_all.lock().unwrap().extend(stats_vec_seq);
                 }
                 log::info!("Finished sample {}.", &read_files[j]);

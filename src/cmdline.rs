@@ -81,7 +81,7 @@ pub struct ContainArgs {
     #[clap(long="debug", help = "Debug output")]
     pub debug: bool,
 
-    #[clap(short='I',long="read-seq-id", default_value_t=99.5, help_heading = "ALGORITHM", help = "Rough estimate for sequence identity of reads (0-100). Only needed if using moderate error reads (e.g. nanopore)")]
+    #[clap(short='I',long="read-seq-id", default_value_t=99.5, help_heading = "ALGORITHM", help = "Rough estimate for sequence identity of reads (0-100). Only needed if using moderate error reads (e.g. nanopore)", hidden=true)]
     pub seq_id: f64,
 
     //#[clap(short='l', long="read-length", help_heading = "ALGORITHM", help = "Read length (single-end length for pairs). Only necessary for short-read coverages when using --estimate-unknown. Not needed for long-reads" )]
