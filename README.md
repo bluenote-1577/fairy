@@ -1,26 +1,33 @@
 # fairy - fast approximate contig coverage for metagenomic binning
 
-### Introduction
+## Introduction - multi-sample coverage problem
 
-After metagenomic assembly, optimal workflows require aligning **all metagenomic reads** against all assemblies to obtain coverages. Then, metagenome-assembled genomes (MAGs) are generated using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). Unfortunately, all-to-all alignment of samples to assemblies is very slow.
+After metagenomic assembly, optimal workflows require aligning **all metagenomic reads** against all assemblies to obtain coverages. Then, metagenome-assembled genomes (MAGs) are generated using a binner like [metabat2](https://bitbucket.org/berkeleylab/metabat). 
+
+Unfortunately, all-to-all alignment of samples to assemblies **is very slow**.
 
 **Fairy** resolves this bottleneck by using a fast k-mer alignment-free method to obtain coverage instead of aligning reads. Fairy's coverages are correlated with aligners (but still approximate). However, **fairy is 10-1000x faster than BWA for all-to-all coverage calculation**. 
 
-Important: fairy is designed for **multi-sample** usage and short reads or nanopore reads. Do not use fairy for **single-sample** binning. 
+### Important: fairy is designed for **multi-sample** usage and short reads or nanopore reads. Do not use fairy for **single-sample** binning. 
 
 ### Short-reads 
-Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). I've seen fairy get even better bins than read alignment using the same binner, but don't expect a sensitivity gain.
+Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sample** binning (maybe a +5% to -15% loss in sensitivity). Preliminary testing indicates that fairy may perform as good as (and sometimes better than) BWA on host-associated datasets and slightly worse (but usable) on environmental datasets.
 
 ### Long-reads
 **Non-HiFi:** For simplex nanopore reads, fairy seems to be comparable with minimap2. 
 
 **HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). 
 
-##  Install (current version v0.5.1)
+##  Install (current version v0.5.2)
 
 #### Option 1: conda install 
 
-FORTHCOMING
+```sh
+mamba install -c bioconda fairy
+# conda install -c bioconda fairy
+```
+
+**Warning**: If you're using linux, conda may require AVX2 instructions (e.g. a newer CPU). Source install (option 2) and the static binary (option 3) should still work. 
 
 #### Option 2: Build from source
 
@@ -61,13 +68,18 @@ fairy sketch -1 *_1.fastq.gz -2 *_2.fastq.gz -d sketch_dir
 # sketch/index long reads
 fairy sketch -r long_reads.fq -d sketch_dir
 
+# rename the sketches if filenames are identical
+fairy sketch -r dir1/reads.fq dir2/reads.fq -S sample1 sample2 -d sketch_dir
+
 # calculate coverage
 fairy coverage sketch_dir/*.bcsp contigs.fa -t 10 -o coverage.tsv
 ```
 
 ## Output
 
-The output is compatible with the `jgi_summarize_bam_contig_depths` script from MetaBAT2 (the column names are different, however). 
+### MetaBAT2 format (default)
+
+The default output is compatible with the `jgi_summarize_bam_contig_depths` script from MetaBAT2 (the column names are different, however). 
 
 ```sh
 contigName  contigLen  totalAvgDepth  reads1.fq  reads1.fq-var  reads2.fq  reads2.fq-var  ...
@@ -79,6 +91,8 @@ contig_1    38370      1.4            1.4        1.1100          0       0
 2. The next columns are `mean coverage` and `coverage variance` for each sample.
 
 The above output can be fed directly into MetaBAT2 with default parameters. 
+
+### MaxBin2 format
 
 Alternatively, `--maxbin-format` works directly with MaxBin2 and is also available. This removes the variance columns as well as the `contigLen` and `totalAvgDepth` columns. 
 
