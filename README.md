@@ -18,7 +18,7 @@ Fairy seems to be comparable to [BWA](https://github.com/lh3/bwa) for **multi-sa
 
 **HiFi (strain-resolved assemblies)**: Fairy is worse than minimap2 for strain-resolved assemblies when using >99.9% identity reads (using e.g. hifiasm or meta-mdbg). 
 
-##  Install (current version v0.5.2)
+##  Install (current version v0.5.3)
 
 #### Option 1: conda install 
 
