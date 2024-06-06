@@ -4,9 +4,9 @@
 
 Fairy is used after metagenomic assembly and before binning. It can
 
-* Calculate coverage 100x-1000x faster than read alignment (e.g. BWA) for coverage calculation
-* Give comparable bins for **multi-sample** binning and short read or nanopore reads
-* Output formats that are compatible with MetaBAT2, MaxBin2, and more
+* Calculate coverage 100x-1000x faster than read alignment (e.g. BWA) 
+* Give comparable bins for **multi-sample** binning (short read or nanopore reads)
+* Output formats that are compatible with MetaBAT2, MaxBin2, SemiBin2, and more
 
 **Caveats**: 
 
