@@ -55,7 +55,14 @@ fn print_cov_matrix(ani_results: Vec<AniResult>, read_files: &FxHashSet<String>,
     }
 
     for contig in contig_list_sorted{
-        write!(writer, "{}", contig.split(' ').collect::<Vec<&str>>()[0]).unwrap();
+        let contig_write_name;
+        if args.full_contig_name{
+            contig_write_name = contig;
+        }
+        else{
+            contig_write_name = contig.split(' ').collect::<Vec<&str>>()[0];
+        }
+        write!(writer, "{}", contig_write_name).unwrap();
         if !no_var_and_mean{
             write!(writer, "\t{}", contig_to_size[contig]).unwrap();
         }

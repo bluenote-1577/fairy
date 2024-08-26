@@ -119,5 +119,8 @@ pub struct ContainArgs {
     pub concoct_format: bool,
     #[clap(long="aemb-format", help = "Strobealign --aemb format (default: MetaBAT2 format with variances)", help_heading="OUTPUT")]
     pub aemb_format: bool,
+    #[clap(short='F', long="full-contig-name", help = "Use full contig name (including characters after the first space)", help_heading="OUTPUT")]
+    pub full_contig_name: bool,
+
 
 }
