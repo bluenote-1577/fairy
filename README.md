@@ -4,9 +4,9 @@
 
 Fairy is used after metagenomic assembly and before binning. It can
 
-* Calculate coverage 100x-1000x faster than read alignment (e.g. BWA) for coverage calculation
-* Give comparable bins for **multi-sample** binning and short read or nanopore reads
-* Output formats that are compatible with MetaBAT2, MaxBin2, and more
+* Calculate coverage 100x-1000x faster than read alignment (e.g. BWA) 
+* Give comparable bins for **multi-sample** binning (short read or nanopore reads)
+* Output formats that are compatible with MetaBAT2, MaxBin2, SemiBin2, and more
 
 **Caveats**: 
 
@@ -28,7 +28,7 @@ mamba install -c bioconda fairy
 ```
 
 > [!WARNING]  
-> If you're using linux, conda may require AVX2/AVX512 instructions (e.g. a newer CPU) or [have issues](https://github.com/bluenote-1577/fairy/issues/1). Source install (option 2) and the static binary (option 3) should still work.
+> If you're using linux, AVX512 instructions (e.g. a newer CPU) [may be required](https://github.com/bluenote-1577/fairy/issues/1) for conda. Source install (option 2) and the static binary (option 3) will work for any CPU.
 
 #### Option 2: Build from source
 
@@ -130,4 +130,4 @@ Alternatively, `--maxbin-format` works directly with MaxBin2 and is also availab
 
 ## Citing fairy
 
-Jim Shaw, Yun William Yu. Fairy: fast approximate coverage for multi-sample metagenomic binning (2024). bioRxiv.
+Jim Shaw, Yun William Yu. Fairy: fast approximate coverage for multi-sample metagenomic binning (2024). Microbiome.
