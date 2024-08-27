@@ -1,3 +1,7 @@
+## fairy v0.5.6
+
+* Added the `--full-contig-names` option for outputting the full contig names. 
+
 ## fairy v0.5.5
 
 * Added the --aemb_format option which is the same as strobealign's format (for single samples).
