@@ -1,3 +1,7 @@
+## fairy v0.5.7
+
+* Removed native compile flag. should work with conda now. 
+
 ## fairy v0.5.6
 
 * Added the `--full-contig-names` option for outputting the full contig names. 
