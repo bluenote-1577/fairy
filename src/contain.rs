@@ -963,7 +963,7 @@ fn ani_from_lambda(lambda: Option<f64>, _mean: f64, k: f64, full_cov: &[u32]) ->
 
     let lambda = lambda.unwrap();
     let adj_index =
-        contain_count as f64 / (1. - f64::powf(2.78281828, -lambda)) / full_cov.len() as f64;
+        contain_count as f64 / (1. - f64::exp(-lambda)) / full_cov.len() as f64;
     let ret_ani;
     //let ani = f64::powf(1. - pi, 1./k);
     let ani = f64::powf(adj_index, 1. / k);
@@ -1021,9 +1021,9 @@ fn newton_raphson(rat: f64, mean: f64) -> f64 {
     //    dbg!(1. - mean,rat);
     for _ in 0..1000 {
         let t1 = (1. - rat) * curr;
-        let t2 = mean * (1. - f64::powf(2.78281828, -curr));
+        let t2 = mean * (1. - f64::exp(-curr));
         let t3 = 1. - rat;
-        let t4 = mean * (f64::powf(2.78281828, -curr));
+        let t4 = mean * (f64::exp(-curr));
         curr = curr - (t1 - t2) / (t3 - t4);
     }
     return curr;
