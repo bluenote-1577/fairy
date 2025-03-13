@@ -1,3 +1,7 @@
+## fairy v0.5.8
+
+* Corrected value of "e" constant in algorithms
+
 ## fairy v0.5.7
 
 * Removed native compile flag. should work with conda now. 
