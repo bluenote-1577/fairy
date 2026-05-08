@@ -11,7 +11,7 @@ Fairy is used after metagenomic assembly and before binning. It can
 **Caveats**: 
 
 * Don't use fairy for single-sample binning
-* Don't use fairy for PacBio HiFi
+* Don't use fairy for PacBio HiFi or strain-resolved assemblies (e.g. from [myloasm](https://myloasm-docs.github.io/) or [hifiasm](https://github.com/xfengnefx/hifiasm-meta))
 
 > [!NOTE]  
 > See [here for results and additional information/context about fairy](https://github.com/bluenote-1577/fairy/wiki/Introduction-to-fairy).
