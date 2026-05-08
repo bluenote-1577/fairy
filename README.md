@@ -110,13 +110,22 @@ The above output can be fed directly into MetaBAT2 with default parameters.
 
 ### SemiBin2 format (--aemb-format option)
 
-Since fairy v0.5.5 and [SemiBin v2.1](https://github.com/BigDataBiology/SemiBin), you can use SemiBin as follows
+Since fairy v0.5.5 and [SemiBin v2.1](https://github.com/BigDataBiology/SemiBin), you can use SemiBin as follows. See [SemiBin2 docs](https://semibin.readthedocs.io/en/latest/aemb/) for more info. 
 
 ```sh
-fairy coverage contigs1.fa reads1.bcsp --aemb-format -o cov_aemb1.tsv
-fairy coverage contigs1.fa reads2.bcsp --aemb-format -o cov_aemb2.tsv
+# FOR EACH SAMPLE: split contigs for each sample due to SemiBin2 requirements (N commands)
+mkdir -p semibin_output/sample_1
+SemiBin2 split_contigs -i sample1_contigs.fna.gz -o semibin_output/sample_1
 ...
-SemiBin2 single_easy_bin -i contigs.fa cov_aemb*.tsv -o results 
+
+# FOR EACH SAMPLE: run fairy for ALL SAMPLES against each split contigs (N^2 commands)
+fairy coverage semibin_output/sample_1/split_contigs.fna.gz reads1.bcsp --aemb-format -o semibin_output/sample1/cov_aemb1.tsv
+fairy coverage semibin_output/sample_1/split_contigs.fna.gz reads2.bcsp --aemb-format -o semibin_output/sample1/cov_aemb2.tsv
+...
+
+# FOR EACH SAMPLE: run SemiBin2 using ALL coverage files (N commands)
+SemiBin2 single_easy_bin -i sample1_contigs.fna.gz -a semibin_output/sample1/cov_aemb*.tsv -o results_sample1
+SemiBin2 single_easy_bin -i sample2_contigs.fna.gz -a semibin_output/sample2/cov_aemb*.tsv -o results_sample2 
 ```
 > [!TIP]
 > **Fairy usage for SemiBin2 is different than other tools**: SemiBin2 requires *separate* coverage files for each read sample -- other tools require a *single coverage matrix*. 
